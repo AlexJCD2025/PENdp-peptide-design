@@ -70,7 +70,7 @@ def main():
                          help="Evolution rounds (default: 3)")
     p_score.add_argument("--rank", action="store_true", default=False,
                          help="📊 V4: Gate-aware ranking (with --file)")
-    p_score.add_argument("--verbose", action="store_true", default=True)
+    p_score.add_argument("--verbose", action="store_true", default=False)
 
     # ── compare ──
     p_cmp = sub.add_parser("compare", help="Compare two peptides")
@@ -116,9 +116,12 @@ def main():
     p_lit.add_argument("--export", action="store_true",
                         help="Export as markdown")
 
-    # ── search (standalone) ──
-    from pendp.search.cli import register as register_search
-    register_search(sub)
+    # ── search (standalone) ── V4 fix: lazy import to avoid MLX crash on non-MLX systems
+    _search_registered = False
+    if "search" in sys.argv:
+        from pendp.search.cli import register as register_search
+        register_search(sub)
+        _search_registered = True
 
     # ── db ──
     p_db = sub.add_parser("db", help="Database operations")
@@ -222,16 +225,22 @@ def cmd_score(args):
     if args.calibrate:
         from pendp.scoring.gates import GatePipeline
         pipeline = GatePipeline(log_json=args.log_json)
-        pipeline.calibrate(scoring_engine=engine)
+        calibrated = pipeline.calibrate(scoring_engine=engine)
         if args.log_json:
-            print(pipeline.flush_json())
+            print(calibrated.flush_json())
         return
 
     # ── V4: Structure analysis ──
     if args.structure:
         for seq in sequences:
             from pendp.scoring.structure import StructureAnalyzer, structure_score
+            if not seq.strip():
+                print("❌ Empty sequence — skipping structure analysis")
+                continue
             a = StructureAnalyzer(engine.esm_model if args.esm else None).analyze(seq)
+            if "error" in a:
+                print(f"❌ {seq}: {a['error']}")
+                continue
             ss = structure_score(seq)
             print(StructureAnalyzer().summary(a))
             print(f"  Structure Quality Score: {ss}/10")
@@ -239,6 +248,9 @@ def cmd_score(args):
 
     # ── V4: Directed evolution ──
     if args.evolve:
+        if args.rounds < 1:
+            print("❌ --rounds must be >= 1")
+            return
         for seq in sequences:
             from pendp.scoring.evolution import DirectedEvolution
             evolver = DirectedEvolution(scoring_engine=engine)
@@ -250,17 +262,17 @@ def cmd_score(args):
     if args.rank and args.file and args.gates:
         named = {f"seq_{i}": s for i, s in enumerate(sequences)}
         batch = engine.batch_gate_score(named, log_json=args.log_json)
-        from pendp.scoring.gates import GatePipeline
         pipeline = batch["pipeline"]
-        ranked = [(r["name"], r) for r in batch["ranked"]]
-        # Reconstruct ranked as gate results
-        ranked_grs = []
-        for name, info in ranked:
-            sr = engine.score_sequence(info["sequence"])
+        # Reconstruct for batch_summary
+        ranked_data = []
+        for r in batch["ranked"]:
+            sr = engine.score_sequence(r["sequence"])
             dims = {dim_id: d["score"] for dim_id, d in sr["dimensions"].items()}
-            # We need a GatePipelineResult; reuse from batch
-            ranked_grs.append((name, None, info["combined_score"]))
+            gr = pipeline.evaluate(dims, r["sequence"])
+            ranked_data.append((r["name"], gr, r["combined_score"]))
+        print(pipeline.batch_summary(ranked_data))
         if batch["json_log"]:
+            print("\n--- JSON Audit Log ---")
             print(batch["json_log"])
         return
 

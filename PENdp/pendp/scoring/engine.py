@@ -112,9 +112,9 @@ def score_physiochem(seq: str) -> float:
         score += 1.0  # Very small peptides are good
 
     # Amino acid composition
-    hydrophobic = sum(1 for aa in "AVILMFWY" if aa in seq_upper)
-    charged = sum(1 for aa in "RKDE" if aa in seq_upper)
-    polar = sum(1 for aa in "NQSTCH" if aa in seq_upper)
+    hydrophobic = sum(1 for aa in seq_upper if aa in "AVILMFWY")
+    charged = sum(1 for aa in seq_upper if aa in "RKDE")
+    polar = sum(1 for aa in seq_upper if aa in "NQSTCH")
 
     # Too hydrophobic = poor solubility
     if hydrophobic > n * 0.6:
@@ -184,7 +184,7 @@ def score_asiatic_synergy(seq: str) -> float:
     score = 5.0  # baseline
 
     # Amphipathic helix potential (G, A, L, K rich)
-    amphipathic = sum(1 for aa in "GALK" if aa in seq_upper)
+    amphipathic = sum(1 for aa in seq_upper if aa in "GALK")
     if amphipathic >= 4:
         score += 2.0
     if amphipathic >= 6:
@@ -230,7 +230,7 @@ def score_corona_lnp(seq: str) -> float:
         score += 1.0
 
     # Amphipathic balance (hydrophobic vs hydrophilic)
-    hydrophobic = sum(1 for aa in "AVILMFWY" if aa in seq_upper)
+    hydrophobic = sum(1 for aa in seq_upper if aa in "AVILMFWY")
     h_ratio = hydrophobic / n
     if 0.25 <= h_ratio <= 0.45:  # Sweet spot
         score += 2.0
@@ -249,7 +249,7 @@ def score_corona_lnp(seq: str) -> float:
         score += 0.5
 
     # Rich in aromatic residues (π-π stacking with LNP lipids)
-    aromatic = sum(1 for aa in "FWY" if aa in seq_upper)
+    aromatic = sum(1 for aa in seq_upper if aa in "FWY")
     if aromatic >= 2:
         score += 0.5
 
@@ -330,7 +330,7 @@ def score_synthesis(seq: str) -> float:
         score -= 1.0
 
     # Beta-sheet propensity (Y, V, I, F) → aggregation risk
-    beta = sum(1 for aa in "YVIFW" if aa in seq_upper)
+    beta = sum(1 for aa in seq_upper if aa in "YVIFW")
     if beta > n * 0.4:
         score -= 1.0
 

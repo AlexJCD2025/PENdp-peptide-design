@@ -12,6 +12,7 @@ Gates are executed in order (G0→G1→G8→GFINAL).
 from enum import Enum
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
+from copy import deepcopy
 import json
 import time
 import statistics
@@ -40,6 +41,29 @@ REFERENCE_PEPTIDES = {
     "A6 (AKPC)":   "KPSSPPEE",
 }
 
+# Standard 20 amino acids for validation
+VALID_AA = set("ACDEFGHIKLMNPQRSTVWY")
+
+
+def validate_sequence(seq: str) -> Tuple[str, Optional[str]]:
+    """Validate and normalize a peptide sequence.
+
+    Returns (normalized_sequence, error_message).
+    Error is None if valid.
+    """
+    if not seq or not seq.strip():
+        return "", "Empty sequence"
+    cleaned = seq.strip().upper()
+    invalid = set(cleaned) - VALID_AA
+    if invalid:
+        return cleaned, f"Invalid amino acid(s): {', '.join(sorted(invalid))}"
+    return cleaned, None
+
+
+def count_aa(seq: str, aa_set: str) -> int:
+    """Count how many residues in seq belong to aa_set (by position, not type)."""
+    return sum(1 for aa in seq if aa in aa_set)
+
 
 @dataclass
 class GateDef:
@@ -52,7 +76,7 @@ class GateDef:
     fail_threshold: float
     description: str
     fail_message: str
-    cond_suggestion: str = ""  # V4: smart suggestion when COND
+    cond_suggestion: str = ""
 
     def decide(self, score: float) -> Tuple[GateStatus, str]:
         if score >= self.pass_threshold:
@@ -70,8 +94,8 @@ class GateResult:
     status: GateStatus
     score: float
     message: str
-    suggestion: str = ""  # V4: COND resolution suggestion
-    timestamp: str = ""   # V4: ISO timestamp for audit log
+    suggestion: str = ""
+    timestamp: str = ""
 
 
 @dataclass
@@ -80,10 +104,12 @@ class GatePipelineResult:
     results: List[GateResult] = field(default_factory=list)
     eliminated: bool = False
     elimination_reason: str = ""
-    critical_pass_count: int = 0
+    critical_pass_count: int = 0      # only CRITICAL gates that PASSED
+    important_pass_count: int = 0     # IMPORTANT gates that PASSED
     critical_fail_count: int = 0
     cond_count: int = 0
-    calibration_baselines: Dict[str, Dict] = field(default_factory=dict)  # V4: G0 calibration data
+    total_configured_gates: int = 0   # total gates in the pipeline (fixed)
+    calibration_baselines: Dict[str, Dict] = field(default_factory=dict)
 
     @property
     def total_gates(self) -> int:
@@ -97,41 +123,34 @@ class GatePipelineResult:
     @property
     def overall_status(self) -> str:
         if self.eliminated:
-            return "❌ ELIMINATED"
+            return f"❌ ELIMINATED (at G{self.total_gates}/{self.total_configured_gates})"
+        ci_pass = self.critical_pass_count + self.important_pass_count
+        ci_total = self.total_configured_gates  # use configured not evaluated
         if self.cond_count > 0:
-            return f"⚠️ CONDITIONAL ({self.critical_pass_count}/{self.total_gates} PASS)"
-        return f"✅ PASSED ({self.critical_pass_count}/{self.total_gates})"
+            return f"⚠️ CONDITIONAL ({ci_pass}/{ci_total} CI-PASS)"
+        return f"✅ PASSED ({ci_pass}/{ci_total} CI-PASS)"
 
     @property
     def can_proceed(self) -> bool:
         if self.eliminated:
             return False
-        critical_important = sum(
-            1 for r in self.results
-            if r.gate.criticality in (GateCriticality.CRITICAL, GateCriticality.IMPORTANT)
-        )
-        passed_ci = sum(
-            1 for r in self.results
-            if r.status == GateStatus.PASS
-            and r.gate.criticality in (GateCriticality.CRITICAL, GateCriticality.IMPORTANT)
-        )
-        if critical_important > 0 and passed_ci / critical_important < 0.75:
+        ci_total = 5  # G1,G2,G4(CRITICAL) + G5,G6(IMPORTANT) = 5
+        ci_pass = self.critical_pass_count + self.important_pass_count
+        if ci_total > 0 and ci_pass / ci_total < 0.75:
             return False
         return True
 
     @property
     def gate_score(self) -> float:
-        """Composite gate quality score for ranking (V4)."""
         if self.eliminated:
             return -1.0
-        # Weighted: pass_rate * 50 + critical_pass * 20 + (1 - cond_count/8) * 30
         pr = self.pass_rate * 50
-        cp = (self.critical_pass_count / max(self.total_gates, 1)) * 20
-        cc = (1 - self.cond_count / max(self.total_gates, 1)) * 30
+        ci_pass = self.critical_pass_count + self.important_pass_count
+        cp = (ci_pass / max(self.total_configured_gates, 1)) * 20
+        cc = (1 - self.cond_count / max(self.total_configured_gates, 1)) * 30
         return round(pr + cp + cc, 1)
 
     def to_json(self) -> Dict:
-        """V4: Serialize to JSON-serializable dict."""
         return {
             "sequence": self.sequence,
             "eliminated": self.eliminated,
@@ -141,7 +160,9 @@ class GatePipelineResult:
             "pass_rate": round(self.pass_rate * 100, 1),
             "gate_score": self.gate_score,
             "critical_pass": self.critical_pass_count,
+            "important_pass": self.important_pass_count,
             "cond_count": self.cond_count,
+            "total_gates": self.total_configured_gates,
             "calibration_baselines": self.calibration_baselines,
             "gates": [
                 {
@@ -152,7 +173,7 @@ class GatePipelineResult:
                     "score": gr.score,
                     "threshold_pass": gr.gate.pass_threshold,
                     "threshold_fail": gr.gate.fail_threshold,
-                    "message": gr.message.split(" 💡")[0],  # strip suggestion from message
+                    "message": gr.message.split(" 💡")[0],
                     "suggestion": gr.suggestion,
                     "timestamp": gr.timestamp,
                 }
@@ -161,7 +182,7 @@ class GatePipelineResult:
         }
 
 
-# ── Gate Definitions (V4: added cond_suggestion) ──
+# ── Gate Definitions ──
 
 PENDP_GATES: List[GateDef] = [
     GateDef(
@@ -231,21 +252,28 @@ PENDP_GATES: List[GateDef] = [
 ]
 
 
+def _make_gates() -> List[GateDef]:
+    """Create a fresh deep copy of gate definitions (V4 fix: no shared mutation)."""
+    return deepcopy(PENDP_GATES)
+
+
 class GatePipeline:
     """Execute gate pipeline with calibration, logging, and smart suggestions."""
 
     def __init__(self, gates: List[GateDef] = None, log_json: bool = False):
-        self.gates = gates or PENDP_GATES
+        self.gates = gates if gates is not None else _make_gates()
         self.log_json = log_json
-        self.json_records: List[Dict] = []  # V4: accumulated JSON log
+        self.json_records: List[Dict] = []
+        self._calibration: Dict[str, Dict] = {}
+        self.total_configured = len(self.gates)
 
-    # ── V4: G0 Calibration ──
+    # ── V4: G0 Calibration (returns a NEW calibrated pipeline) ──
 
-    def calibrate(self, scoring_engine=None) -> Dict[str, Dict]:
-        """G0: Run reference peptides through scoring engine to set baselines.
+    def calibrate(self, scoring_engine=None) -> "GatePipeline":
+        """G0: Run reference peptides and return a NEW calibrated pipeline.
 
-        Returns per-dimension statistics (mean, stdev, p25, p75) that can be
-        used to adjust gate thresholds dynamically.
+        Original pipeline is NOT mutated. The returned pipeline has
+        thresholds adjusted based on reference peptide baselines.
         """
         if scoring_engine is None:
             from pendp.scoring.engine import ScoringEngine
@@ -267,7 +295,6 @@ class GatePipeline:
             }
             print(f"  {name:10s} ({seq:12s})  total={result['total_score']:5.1f}")
 
-        # Compute per-dimension statistics
         dim_stats = {}
         all_dim_ids = sorted(calib[list(calib.keys())[0]]["dimensions"].keys())
         for dim_id in all_dim_ids:
@@ -281,14 +308,13 @@ class GatePipeline:
                 "p75": round(_percentile(scores, 75), 1),
             }
 
-        # Adjust gate thresholds based on reference distribution
+        # Create new calibrated gates (deep copy, no mutation of originals)
+        new_gates = deepcopy(self.gates)
         adjustments = []
-        for gate_def in self.gates:
+        for gate_def in new_gates:
             dim_id = gate_def.dimension
             if dim_id in dim_stats:
-                ref_mean = dim_stats[dim_id]["mean"]
                 ref_p25 = dim_stats[dim_id]["p25"]
-                # Lower pass threshold to reference p25 if it's more lenient
                 if ref_p25 < gate_def.pass_threshold:
                     old = gate_def.pass_threshold
                     gate_def.pass_threshold = max(ref_p25, gate_def.fail_threshold + 0.5)
@@ -302,40 +328,61 @@ class GatePipeline:
             for adj in adjustments:
                 print(adj)
 
-        # Print stats table
         print(f"\n📊 Per-dimension baselines:")
         print(f"  {'Dim':4s} {'Mean':>5s} {'Stdev':>5s} {'Min':>5s} {'Max':>5s} {'P25':>5s} {'P75':>5s}")
         for dim_id in all_dim_ids:
             s = dim_stats[dim_id]
             print(f"  {dim_id:4s} {s['mean']:5.1f} {s['stdev']:5.1f} {s['min']:5.1f} {s['max']:5.1f} {s['p25']:5.1f} {s['p75']:5.1f}")
 
-        self._calibration = dim_stats
-        return dim_stats
+        # Return new calibrated pipeline
+        calibrated = GatePipeline(gates=new_gates, log_json=self.log_json)
+        calibrated._calibration = dim_stats
+        # Log calibration to JSON if requested
+        if self.log_json:
+            calibrated.json_records.append({
+                "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                "event": "G0_calibration",
+                "reference_count": len(REFERENCE_PEPTIDES),
+                "adjustments": [a.strip() for a in adjustments],
+                "baselines": {k: {"mean": v["mean"], "p25": v["p25"]} for k, v in dim_stats.items()},
+            })
+        return calibrated
 
     # ── Core evaluation ──
 
     def evaluate(self, dimension_scores: Dict[str, float],
                  sequence: str = "") -> GatePipelineResult:
-        """Run all gates against dimension scores."""
+        """Run all gates against dimension scores.
+
+        After critical FAIL, remaining gates are appended as SKIP for
+        audit consistency.
+        """
         ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-        result = GatePipelineResult(sequence=sequence)
-        if hasattr(self, '_calibration'):
+        result = GatePipelineResult(sequence=sequence, total_configured_gates=self.total_configured)
+        if self._calibration:
             result.calibration_baselines = self._calibration
 
-        for gate_def in self.gates:
+        eliminated_idx = -1
+        for i, gate_def in enumerate(self.gates):
+            if eliminated_idx >= 0:
+                # Append SKIP for remaining gates
+                gate_result = GateResult(
+                    gate=gate_def, status=GateStatus.SKIP, score=0.0,
+                    message=f"┄ {gate_def.name}: SKIPPED (eliminated at G{eliminated_idx+1})",
+                    timestamp=ts,
+                )
+                result.results.append(gate_result)
+                continue
+
             score = dimension_scores.get(gate_def.dimension, 0.0)
             status, message = gate_def.decide(score)
             gate_result = GateResult(
-                gate=gate_def,
-                status=status,
-                score=score,
-                message=message,
+                gate=gate_def, status=status, score=score, message=message,
                 suggestion=gate_def.cond_suggestion if status == GateStatus.COND else "",
                 timestamp=ts,
             )
             result.results.append(gate_result)
 
-            # JSON log
             if self.log_json:
                 self.json_records.append({
                     "ts": ts, "seq": sequence,
@@ -345,10 +392,11 @@ class GatePipeline:
                     "fail_threshold": gate_def.fail_threshold,
                 })
 
-            # Count outcomes
             if status == GateStatus.PASS:
-                if gate_def.criticality in (GateCriticality.CRITICAL, GateCriticality.IMPORTANT):
+                if gate_def.criticality == GateCriticality.CRITICAL:
                     result.critical_pass_count += 1
+                elif gate_def.criticality == GateCriticality.IMPORTANT:
+                    result.important_pass_count += 1
             elif status == GateStatus.COND:
                 result.cond_count += 1
             elif status == GateStatus.FAIL:
@@ -360,23 +408,14 @@ class GatePipeline:
                         f"score={score:.1f} < {gate_def.fail_threshold} — "
                         f"{gate_def.fail_message}"
                     )
-                    break
+                    eliminated_idx = i  # Mark for SKIP on subsequent gates
 
         return result
 
-    # ── V4: Batch evaluation with gate-aware ranking ──
+    # ── V4: Batch evaluation ──
 
     def evaluate_batch(self, sequences: Dict[str, str],
                        scoring_engine=None) -> List[Tuple[str, GatePipelineResult, float]]:
-        """Evaluate multiple sequences and rank by gate quality + total score.
-
-        Args:
-            sequences: {name: seq} dict
-            scoring_engine: ScoringEngine instance (created if None)
-
-        Returns:
-            Sorted list of (name, gate_result, combined_rank_score)
-        """
         if scoring_engine is None:
             from pendp.scoring.engine import ScoringEngine
             scoring_engine = ScoringEngine()
@@ -386,19 +425,15 @@ class GatePipeline:
             sr = scoring_engine.score_sequence(seq)
             dim_scores = {dim_id: d["score"] for dim_id, d in sr["dimensions"].items()}
             gate_result = self.evaluate(dim_scores, seq)
-
-            # Combined rank score: gate_score (0-100) + normalized total
             combined = gate_result.gate_score + sr["total_score"]
             ranked.append((name, gate_result, combined))
 
-        # Sort: eliminated last, then by combined score descending
         ranked.sort(key=lambda x: (x[1].eliminated, -x[2]))
         return ranked
 
     # ── Display ──
 
     def summary(self, result: GatePipelineResult) -> str:
-        """Generate human-readable gate summary."""
         lines = [
             f"\n{'═'*60}",
             f"🔬 PENdp V4 Gate Pipeline — {result.sequence or 'unknown'}",
@@ -416,20 +451,20 @@ class GatePipeline:
             if gr.status == GateStatus.COND and gr.suggestion:
                 lines.append(f"       💡 {gr.suggestion}")
 
+        ci_pass = result.critical_pass_count + result.important_pass_count
         lines.append(f"{'─'*60}")
         lines.append(f"  {result.overall_status}  (gate_score={result.gate_score:.1f})")
         if result.eliminated:
             lines.append(f"  ⛔ {result.elimination_reason}")
         elif not result.can_proceed:
-            lines.append(f"  ⛔ 关键门通过率 <75% — 不建议推进湿实验")
+            lines.append(f"  ⛔ 关键+重要门通过率 <75% — 不建议推进湿实验")
         else:
-            lines.append(f"  ✅ 可以推进下一步 (Gate通过率 {result.pass_rate*100:.0f}%)")
+            lines.append(f"  ✅ 可以推进下一步 (CI-PASS={ci_pass}/{self.total_configured})")
         lines.append(f"{'═'*60}")
         return "\n".join(lines)
 
     def batch_summary(self, ranked: List[Tuple[str, GatePipelineResult, float]],
                       top_n: int = 10) -> str:
-        """Generate ranked batch summary."""
         lines = [
             f"\n{'═'*70}",
             f"🔬 PENdp V4 Batch Gate Ranking — Top {min(top_n, len(ranked))}",
@@ -446,14 +481,12 @@ class GatePipeline:
         return "\n".join(lines)
 
     def flush_json(self) -> str:
-        """V4: Return accumulated JSON log as a JSONL string."""
-        return "\n".join(json.dumps(r) for r in self.json_records)
+        return "\n".join(json.dumps(r, ensure_ascii=False) for r in self.json_records)
 
 
 # ── Helpers ──
 
 def _percentile(data: List[float], p: float) -> float:
-    """Compute the p-th percentile of data."""
     if not data:
         return 0.0
     sorted_data = sorted(data)
@@ -467,6 +500,5 @@ def _percentile(data: List[float], p: float) -> float:
 
 def evaluate_gates(seq: str, dimension_scores: Dict[str, float],
                    log_json: bool = False) -> GatePipelineResult:
-    """One-shot gate evaluation."""
     pipeline = GatePipeline(log_json=log_json)
     return pipeline.evaluate(dimension_scores, seq)

@@ -206,7 +206,11 @@ def structure_score(seq: str) -> float:
     Factors: flexibility (good for LNP), moderate disorder,
     amphipathicity, disulfide stabilization.
     """
+    if not seq or not seq.strip():
+        return 0.0
     a = StructureAnalyzer().analyze(seq)
+    if "error" in a:
+        return 0.0
     score = 5.0
 
     # Flexibility bonus (0.3-0.6 is sweet spot for LNP display)
