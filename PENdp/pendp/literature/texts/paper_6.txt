@@ -1,0 +1,125 @@
+================================================================================
+PAPER 6: ASSET Protocol — Antibody-directed LNP Delivery
+================================================================================
+
+NOTE ON SOURCE:
+The ASSET (Anchored Secondary scFv Enabling Targeting) platform was originally
+described in:
+
+Veiga N, Goldsmith M, Granot Y, et al. "Cell specific delivery of modified mRNA
+expressing therapeutic proteins to leukocytes." Nature Communications, 2018, 9:4493.
+DOI: 10.1038/s41467-018-06936-1
+
+The user referenced this as "ASSET Protocol: Antibody-directed LNP" (2025). The
+original publication is 2018. A newer related antibody-directed LNP system was
+published in Nature Nanotechnology 2025 (Chen et al., TP1107 system).
+
+================================================================================
+ORIGINAL ASSET PLATFORM (Veiga et al., Nature Communications 2018)
+================================================================================
+
+TITLE: Cell specific delivery of modified mRNA expressing therapeutic proteins
+to leukocytes
+
+AUTHORS: Núria Veiga, Meir Goldsmith, Yahel Granot, Dina Rosenblum, Noa Dammes,
+Rivka Kedmi, Srinivas Ramishetti, Dan Peer (Tel Aviv University)
+
+================================================================================
+ABSTRACT
+================================================================================
+
+"Here, we present a precision protein expression strategy in Ly6c+ inflammatory
+leukocytes in inflammatory bowel disease (IBD) induced mice. We demonstrate a
+therapeutic effect in an IBD model by targeted expression of the interleukin 10
+in Ly6c+ inflammatory leukocytes."
+
+Key achievements:
+- First in vivo targeted delivery system for selective mmRNA-based protein
+  expression in leukocytes
+- Used ASSET (Anchored Secondary scFv Enabling Targeting) platform to coat LNPs
+  with anti-Ly6c antibodies
+- Achieved ~100-fold increase in reporter expression in Ly6c+ cells vs. control
+- Therapeutic IL-10 expression reduced colitis pathology in DSS mouse model
+
+================================================================================
+METHODOLOGY
+================================================================================
+
+ASSET PLATFORM:
+- Engineered anti-rat IgG2a single-chain variable fragment (scFv) with N-terminal
+  lipid modification
+- Anchored into LNP surface via hydrophobic interaction of the lipid moiety
+- Captures unmodified antibodies by binding their Fc domain
+- Allows rapid switching between different targeting antibodies (modular)
+
+LNP CHARACTERIZATION:
+- Size: 63.7 nm ± 1.59 nm (DLS)
+- Encapsulation efficiency: ~100% (RiboGreen assay)
+- Composition: DLin-MC3-DMA / DSPC / cholesterol / DMG-PEG / DSPE-PEG
+  (50:10.5:38:1.4:0.1 mol ratio)
+- Fabrication: NanoAssemblr microfluidic mixing
+
+mmRNA SYNTHESIS:
+- CleanCap Firefly luciferase and custom IL-10 mmRNA (TriLink)
+- Modified nucleotides (5mC, pseudo-uridine) for reduced immunogenicity
+
+================================================================================
+KEY RESULTS
+================================================================================
+
+IN VIVO TARGETING:
+- ~20-fold increase in fLuc expression in intestine (targeted vs. isotype control)
+- ~10-fold lower fLuc expression in liver (improved off-target)
+- ~100-fold increase in fLuc in Ly6c+ sorted splenocytes
+- No difference in Ly6c- population → cell-specific targeting
+
+THERAPEUTIC EFFICACY IN DSS COLITIS MODEL:
+- IV injections on days 3, 6, 9 (1 mg/kg mmRNA)
+- Significant increase in colonic IL-10 levels
+- Significant reduction in TNFα and IL-6 in colon
+- Prevention of weight loss, colon shortening, histological damage
+- Therapeutic effect lasted >48h (vs. few hours for recombinant IL-10)
+
+SAFETY PROFILE:
+- Liver enzymes (ALT, AST, ALP) in normal range
+- Normal liver histology (no necrosis, bleeding)
+- Normal complete blood count
+- No increase in splenic TNFα or IL-6
+
+================================================================================
+COMPARISON WITH NEWER TP1107 SYSTEM (Nature Nanotechnology 2025)
+================================================================================
+
+A newer antibody-capture system was published in Nature Nanotechnology 2025
+(Chen MZ, Yuen D, McLeod VM, et al., DOI: 10.1038/s41565-025-01954-9).
+
+Title: "A versatile antibody capture system drives specific in vivo delivery of
+mRNA-loaded lipid nanoparticles"
+
+Key improvements over ASSET:
+- Uses optimally oriented anti-Fc nanobody (TP1107) with site-specific incorporation
+  of p-azido-phenylalanine at Gln15
+- >1,000-fold higher protein expression vs. non-targeted LNPs
+- >8-fold higher expression vs. conventional random antibody conjugation
+- ~50% of CD4+ and CD4+ T cells targeted in spleen and liver in vivo
+- Minimal off-target delivery to other immune cells
+- No significant toxicity observed
+
+Orientation Strategy Comparison:
+| Method                     | Orientation             | Complexity                   |
+|----------------------------|-------------------------|------------------------------|
+| Random lysine (NHS)        | Random (± variable)     | Simple but impairs binding   |
+| Reduced hinge (maleimide)  | Fixed but not optimal   | Requires careful conditions  |
+| ASSET (lipidated scFv)     | Suboptimal (N-terminal) | Simple but limited           |
+| Optimal TP1107 (azPhe-Q15) | Optimal                 | Simple, high yield           |
+
+================================================================================
+PENdp LITERATURE DATABASE ENTRY
+================================================================================
+
+Title: ASSET Protocol: Antibody-directed LNP
+Authors: (Veiga et al. / Peer Lab)
+Source: Nature Communications, 2018
+PENdp Relevance: 偶联方向策略——D9评分维度来源
+Key Finding: 工程化scFv固定到LNP表面实现特异性靶向
+Priority: medium

@@ -1,0 +1,54 @@
+================================================================================
+PAPER 1: The landscape for therapeutic cancer vaccines
+================================================================================
+
+Title: The landscape for therapeutic cancer vaccines
+Authors: Congzhou Chen, Xue Wang, Wei Wei, Fanpu Kong, Guanqiao Li
+Source: Nature Reviews Drug Discovery (From the Analyst's Couch), 2026
+DOI: 10.1038/d41573-026-00063-z
+URL: https://doi.org/10.1038/d41573-026-00063-z
+
+ACCESS STATUS: BEHIND PAYWALL
+The full article is behind a Nature paywall. Only metadata available via web extraction.
+
+================================================================================
+METADATA
+================================================================================
+
+Authors and Affiliations (all contributed equally):
+- Congzhou Chen – Vanke School of Public Health, Tsinghua University, Beijing; School of Basic Medical Sciences, Tsinghua University
+- Xue Wang – Center for Drug Evaluation, National Medical Products Administration (NMPA), Beijing
+- Wei Wei – Center for Drug Evaluation, NMPA, Beijing
+- Fanpu Kong – School of Basic Medical Sciences, Tsinghua University
+- Guanqiao Li – Vanke School of Public Health, Tsinghua University
+
+Competing Interests: The authors declare no competing interests.
+
+================================================================================
+PENdp LITERATURE DATABASE ENTRY
+================================================================================
+
+Title: The landscape for therapeutic cancer vaccines
+Authors: Congzhou Chen 等 (清华大学+CDE)
+Source: Nat. Rev. Drug Discov. (From the Analyst's Couch), 2026
+DOI: 10.1038/d41573-026-00063-z
+PENdp Relevance: mRNA递送技术突破验证了LNP平台的趋势; 肿瘤疫苗赛道已拥挤
+Key Finding: Moderna个性化mRNA疫苗Phase III, 黑色素瘤5年降低49%风险; BioNTech计划拆分上市; MSKCC胰腺癌疫苗6年持久响应
+Priority: high
+
+================================================================================
+NOTE
+================================================================================
+
+Full text inaccessible due to Nature paywall. The article appears in the "From the
+Analyst's Couch" section of Nature Reviews Drug Discovery (ISSN 1474-1784 online,
+1474-1776 print). Supplementary information is available.
+
+To access full text, use institutional access or contact corresponding author
+at Tsinghua University.
+
+Search results indicate the paper discusses:
+- Moderna's personalized mRNA cancer vaccine Phase III results (melanoma, 49% risk reduction at 5 years)
+- BioNTech's plans for spin-off
+- MSKCC pancreatic cancer vaccine with durable response at 6 years
+- Overall landscape of therapeutic cancer vaccines including mRNA and other modalities

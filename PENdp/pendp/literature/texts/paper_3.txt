@@ -1,0 +1,113 @@
+================================================================================
+PAPER 3: AKPC-modified LNP for p32/CD44-targeted delivery
+================================================================================
+
+Full Title: Peptide-Modified Lipid Nanoparticles Boost the Antitumor Efficacy of
+RNA Therapeutics
+Authors: Zhao et al.
+Source: ACS Nano, 2025, 19(14), 13685-13704
+DOI: 10.1021/acsnano.4c14625
+PMID: 40176316 | PMCID: PMC12004924
+URL: https://pmc.ncbi.nlm.nih.gov/articles/PMC12004924/
+
+Note: The user referenced this as "AKPC-modified LNP for p32-targeted delivery"
+(ACS Nano 2024), but the actual paper targets CD44 (not p32) via the A6 peptide
+(KPSSPPEE) conjugated to LNPs (AKPC-LNP). The year is 2025, not 2024.
+
+================================================================================
+ABSTRACT / KEY INNOVATION
+================================================================================
+
+LNPs modified with a CD44-specific lipopeptide (AKPC-LNP) enable targeted delivery
+of YAP/TAZ-siRNA (siYT) to CD44+ cancer cells. This is the FIRST example of
+CD44-targeted LNPs for RNA interference in metastatic breast cancer.
+
+Background:
+- Breast cancer (BC) is a leading cause of cancer death; metastatic BC has 22% 5-year survival
+- RNA therapeutics (siRNA) can precisely silence disease-causing genes
+- LNPs (gold standard for siRNA delivery, e.g., Onpattro) have limited antitumor
+  efficacy due to unspecific hepatic accumulation after systemic administration
+- YAP/TAZ: transcriptional co-activators of Hippo pathway; drive proliferation,
+  stemness, chemoresistance, metastasis in most solid tumors including breast cancer
+- CD44: cancer stem cell marker overexpressed in many cancers
+
+================================================================================
+METHODOLOGY HIGHLIGHTS
+================================================================================
+
+LIPOPEPTIDE & LNP FORMULATION:
+
+Lipopeptide: Ac-KPSSPPEEGGGKKKGK-PEG4-Chol (AKPC)
+  - Synthesized via Fmoc SPPS, purified by HPLC, confirmed by LC-MS
+  - The A6 peptide (KPSSPPEE) targets CD44
+  - GGGKKKGK spacer improves hydrophilicity and binding affinity
+  - Conjugated to cholesterol via PEG4 linker
+
+Control: scrambled peptide (Cho-PEG4-SPEKPEPS-NH2)
+
+LNP Composition (MC3-siYT base):
+  - Ionizable lipid Dlin-MC3-DMA: 50 mol%
+  - Cholesterol: 38.5 mol%
+  - DSPC: 10 mol%
+  - DMG-PEG2K: 1.5 mol%
+  - For AKPC-LNP: 2 mol% AKPC added
+
+Formulation: Microfluidic mixing at 3:1 flow ratio (aqueous siRNA:lipid ethanol)
+→ dialysis against PBS
+
+Physicochemical Properties (unmodified vs. AKPC):
+  - Hydrodynamic diameter: ~120 nm (PDI < 0.2)
+  - Zeta potential: near-neutral
+  - Encapsulation efficiency: >90%
+  - Cryo-TEM: similar morphology (electron-dense core, some lamellar structures)
+
+CELLS & MODELS:
+  - In vitro: Human triple-negative breast cancer (TNBC) lines HCC38 and MDA-MB-231
+    (high CD44 expression)
+  - In vivo: Zebrafish xenograft model (Tg(fli1:EGFP)/Casper)
+  - Additional: Prostate cancer PDX-derived organoids (LAPC9) and subcutaneous PDX
+
+================================================================================
+KEY RESULTS
+================================================================================
+
+1. CD44-DEPENDENT TARGETING IN VITRO
+- Flow cytometry & confocal microscopy showed significantly higher binding/uptake
+  of AKPC-siYT vs. unmodified MC3-siYT in both HCC38 and MDA-MB-231 cells
+- CD44 knockdown by lentiviral shRNA abolished enhanced binding → confirms specificity
+- Scrambled peptide-LNPs did not increase uptake
+
+2. IN VIVO TUMOR TARGETING (ZEBRAFISH)
+- MC3-siYT: no colocalization with tumor cells (Pearson correlation ~0.0)
+- AKPC-siYT: strong colocalization (PCC > 0.5) in both tail and hindbrain
+- Scrambled controls: no targeting in vivo
+
+3. IN VITRO ANTITUMOR EFFICACY (2D)
+- Gene silencing (qPCR, 48h): AKPC-siYT silenced YAP/TAZ mRNA by 85% (HCC38),
+  75% (MDA-MB-231) vs. MC3-siYT ~50%
+- Downstream genes (AMOTL2, CTGF, CYR61) also suppressed more strongly
+- Apoptosis (Annexin V/PI): HCC38: PBS 9.6%, MC3-siYT 14.3%, AKPC-siYT 40.1%
+- Cell viability (WST-1, 72h): AKPC-siYT reduced to 28% (HCC38), 33% (MDA-MB-231)
+- Colony formation: AKPC-siYT almost completely abolished; MC3-siYT only partially
+
+4. 3D TUMOR SPHEROID MODEL
+- AKPC-siYT induced strongest apoptosis (Flip:EGFP/mCherry ratio)
+- Spheroid volume: AKPC-siYT reduced by ~70% (vs. MC3-siYT ~40%, controls ~0%)
+
+5. IN VIVO ANTITUMOR EFFICACY (ZEBRAFISH)
+- In tail (systemic): AKPC-siYT induced ~100% tumor suppression
+- In hindbrain: AKPC-siYT produced strongest inhibition
+
+================================================================================
+PENdp LITERATURE DATABASE ENTRY
+================================================================================
+
+Title: AKPC-modified LNP for p32-targeted delivery
+Authors: (Zhao et al.)
+Source: ACS Nano, 2024 (actual: 2025)
+PENdp Relevance: AKPC/LinTT1作为LNP表面修饰多肽的验证数据
+Key Finding: AKPC序列KPSSPPEE靶向p32受体 (actual: CD44), LNP修饰后增强肿瘤摄取
+Priority: high
+
+Note: The PENdp database mentions p32 targeting, but the actual paper characterizes
+A6 (KPSSPPEE) as a CD44-targeting peptide, not p32.

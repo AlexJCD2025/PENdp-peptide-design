@@ -1,0 +1,146 @@
+================================================================================
+PAPER 2: CendR peptide-mediated tumor penetration
+================================================================================
+
+Primary Reference: Ruoslahti E - Nature Reviews Cancer, 2010
+Comprehensive Review Source: Teesalu T, Sugahara KN, Ruoslahti E.
+"Tumor-Penetrating Peptides." Frontiers in Oncology, 2013 Aug 27;3:216.
+DOI: 10.3389/fonc.2013.00216 | PMC3753659
+
+NOTE: The exact paper "CendR peptide-mediated tumor penetration" by Ruoslahti E
+in Nature Reviews Cancer (2010) could not be located as a review article by
+Ruoslahti in that journal. A 2010 Nature Reviews Cancer Research Highlight titled
+"Drugs hitch a ride" (nrc2861) summarizes Ruoslahti's iRGD/CendR work.
+The comprehensive review below by the same group covers the CendR mechanism in detail.
+
+================================================================================
+CENDR MECHANISM — COMPREHENSIVE REVIEW (Teesalu, Sugahara, Ruoslahti 2013)
+================================================================================
+
+ABSTRACT (Key Excerpts):
+
+"Tumor-homing peptides can be used to deliver drugs into tumors. ... The prototypic
+peptide of this class, iRGD (CRGDKGPDC), contains the integrin-binding RGD motif.
+... The tumor-penetrating properties of iRGD are mediated by a second sequence motif,
+R/KXXR/K. This C-end Rule (or CendR) motif is active only when the second basic
+residue is exposed at the C-terminus of the peptide."
+
+"Proteolytic processing of iRGD in tumors activates the cryptic CendR motif, which
+then binds to neuropilin-1 activating an endocytic bulk transport pathway through
+tumor tissue."
+
+"Remarkably the drug to be targeted does not have to be coupled to the peptide; the
+bulk transport system activated by the peptide sweeps along any compound that is
+present in the blood."
+
+================================================================================
+1. BACKGROUND — THE DRUG PENETRATION PROBLEM
+================================================================================
+
+- Systemic drug delivery: Only a small fraction reaches the target.
+- Synaphic (active) targeting uses molecular markers specific to target tissue.
+- Limitations: Even when delivered to tumor vessels, drugs must still extravasate
+  and penetrate into extravascular tumor tissue to reach cancer cells.
+- Receptor number limit: A gram of tumor tissue likely has only a few picomoles of
+  any given receptor — insufficient for effective conjugated delivery.
+
+================================================================================
+2. TUMOR-PENETRATING PEPTIDES — CORE MECHANISM
+================================================================================
+
+MODULAR STRUCTURE:
+
+Tumor-penetrating peptides (e.g., iRGD, LyP-1, iNGR) contain three modules:
+1. Vascular homing motif — binds primary receptor on tumor endothelium (RGD → αv integrins)
+2. R/KXXR/K tissue penetration motif (CendR motif) — becomes active after cleavage
+3. Protease recognition site — between the two motifs, cleaved by tumor proteases
+
+PROTOTYPE: iRGD (CRGDKGPDC)
+
+iRGD MECHANISM — 3-STEP TUMOR TARGETING:
+
+| Step | Event                              | Binding Partner           |
+|------|-------------------------------------|---------------------------|
+| 1    | Vascular homing via RGD             | αv integrins (tumor ECs)  |
+| 2    | Proteolytic processing exposes      | Tumor microenvironment    |
+|      | C-terminal CendR motif              |                           |
+| 3    | CendR binding to neuropilin-1       | NRP-1 (transmembrane)     |
+| 4    | Activation of bulk transport        | Endocytic trans-tissue    |
+|      | pathway (CendR pathway)             | transport                 |
+
+THE C-END RULE (CENDR) MOTIF:
+
+- Consensus: R/KXXR/K (REQUIRES free C-terminal basic residue)
+- Activity lost if: additional amino acids added, C-terminus amidated, D-amino acids
+- Saturable, chiral recognition → specific receptor (not like CPPs)
+- Identified NRP-1 as main binding molecule via affinity chromatography with RPARPAR
+
+NEUROPILIN-1 (NRP-1):
+
+- Co-receptor for VEGFs, semaphorins, TGFβ — all have C-terminal CendR motifs
+- Overexpressed in tumors (cancer cells, stromal cells) and tumor vessels
+- Binding pocket: b1b2 domain
+- Stable binding requires interaction of -2 and -3 residues with loop III of NRP-1 b1
+- D-conformer of RPARPAR does not fit → D-Tat does not bind NRP-1
+
+Physiological ligands with CendR: VEGF, semaphorins, TGFβ, complement C3a/C5a,
+bradykinin, kallidin. Pathogens: HTLV-2, Crimean-Congo HFV, tick-borne encephalitis,
+Ebola, anthrax toxin (furin cleavage creates active CendR).
+
+THE CENDR TRANSPORT PATHWAY:
+
+- Active, energy-dependent (not diffusion)
+- Endosomal uptake into intracellular vesicles
+- Extravasation & tumor penetration via endosome-plasma membrane fusion (exocytosis)
+- Pathway may be hijacked by viruses and toxins for cell entry and tissue spreading
+
+================================================================================
+3. KEY IN VIVO DATA
+================================================================================
+
+iRGD Characteristics:
+- Affinity for αvβ3: Kd = 17.8 ± 8.6 nM
+- Affinity for αvβ5: Kd = ~62 nM
+- CRGDK fragment affinity for NRP-1: Kd ~1.4 µM
+
+Drug Penetration (Sugahara et al., Science 2010):
+- Co-administration of iRGD increases drug penetration up to 40-fold
+- Works for compounds of different sizes and chemical properties
+- No chemical conjugation required (co-administration is sufficient)
+- Active transport via NRP-1; blocked by NRP-1 antibodies, sodium azide, reduced temp
+
+Tumor Models: Prostate, breast, pancreas, brain, bone, de novo transgenic models
+(pancreatic and cervical cancer). Normal tissues were negative.
+
+Nanoparticle Delivery: iRGD-coated phage (65 nm), micelles (15-25 nm), iron oxide
+nanoworms (~80 nm) all penetrated deep into tumor tissue.
+
+iRGD-Abraxane (130 nm albumin-paclitaxel nanoparticles):
+- 8-fold more accumulation vs. non-targeted abraxane in orthotopic 22Rv1 model
+- 11-fold more in BT474 breast cancer model
+- Significant tumor growth inhibition at 3 mg/kg (where untargeted had no effect)
+
+================================================================================
+4. NATURE REVIEWS CANCER 2010 HIGHLIGHT
+================================================================================
+
+"Drugs hitch a ride" — Nature Reviews Cancer, volume 10, page 385 (2010)
+Author: Mhairi Skinner (Consulting Editor)
+
+Key points about Ruoslahti's iRGD work:
+- iRGD cyclic peptide (CRGDKGPDC) targets αv integrins on tumor endothelium
+- After binding, iRGD is cleaved and shows increased binding to NRP-1
+- Co-administration of iRGD increases drug penetration up to 40-fold
+- Requires active transport, not passive leakage
+- Provides a "hitchhiker" mechanism for anticancer drugs
+
+================================================================================
+5. PENdp LITERATURE DATABASE ENTRY
+================================================================================
+
+Title: CendR peptide-mediated tumor penetration
+Authors: Ruoslahti E
+Source: Nature Reviews Cancer, 2010
+PENdp Relevance: iRGD/iNGR的CendR穿透机制核心文献
+Key Finding: RGD→αvβ3 → 切割暴露CendR → NRP-1结合 → 跨内皮转运
+Priority: high

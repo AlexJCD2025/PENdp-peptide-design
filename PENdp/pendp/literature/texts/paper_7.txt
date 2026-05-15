@@ -1,0 +1,75 @@
+================================================================================
+PAPER 7: 2025年度药品审评报告 (NMPA/CDE)
+================================================================================
+
+Title: 2025年度药品审评报告 (Annual Drug Evaluation Report 2025)
+Author: 国家药品监督管理局药品审评中心 (CDE/NMPA)
+Source: CDE官方网站 (https://www.cde.org.cn/)
+Year: Released May 13, 2026
+
+================================================================================
+ACCESS NOTE
+================================================================================
+
+The full report was released on May 13, 2026 (today) by the CDE (Center for Drug
+Evaluation, NMPA). The report was published on the CDE official website but the
+PDF was not accessible during this task. Content below is compiled from:
+
+1. PENdp literature database entry (papers.py)
+2. News brief from Yicai/First Finance (yicai.com/brief/103180327.html)
+3. General knowledge of NMPA/CDE review report structure
+
+================================================================================
+NEWS SUMMARY (Yicai/First Finance, May 13, 2026)
+================================================================================
+
+According to Xinhua News Agency, the CDE published the "2025 Annual Drug Evaluation
+Report" on May 13, 2026. Key highlights:
+
+- 2025年药品注册申请受理、审结数量稳步增长
+  (Drug registration applications received and reviewed showed steady growth in 2025)
+
+- 创新药获批数量创历史新高
+  (Number of innovative drug approvals reached a record high)
+
+- 临床急需用药加速上市
+  (Clinically urgent drugs accelerated to market)
+
+- 药品审评审批体系持续完善
+  (Drug evaluation and approval system continues to improve)
+
+- 有力保障群众用药需求
+  (Effectively guaranteeing public medication needs)
+
+================================================================================
+PENdp LITERATURE DATABASE ENTRY
+================================================================================
+
+Title: 2025年度药品审评报告 (NMPA/CDE)
+Authors: 国家药监局药品审评中心
+Source: CDE官方网站, 2026
+PENdp Relevance: 核酸LNP递送审评通道未饱和; 多肽药列为四大创新方向之一;
+                附条件批准路径成熟
+Key Finding: 2025年无LNP核酸药物获批; 多肽药有专项指导原则; 创新药76个获批
+Priority: high
+
+================================================================================
+STRATEGIC RELEVANCE TO PENdp
+================================================================================
+
+1. 核酸药物LNP递送: Review channel not yet saturated — regulatory opportunity
+   for LNP-based nucleic acid drugs
+2. 多肽药物: Listed as one of four major innovation directions — supportive for
+   PENdp's peptide-based LNP targeting approach
+3. 附条件批准: Conditional approval pathway is mature — could accelerate
+   clinical translation
+4. 市场竞争: Few LNPs approved in China despite global advances (Onpattro,
+   Comirnaty) — PENdp could be first-mover
+
+================================================================================
+NOTE
+================================================================================
+
+The 2024 NMPA/CDE annual report (published March 2025) reported 76 innovative drugs
+approved. The 2025 report is expected on the CDE website at:
+https://www.cde.org.cn/ — look for "2025年度药品审评报告" in the announcements section.

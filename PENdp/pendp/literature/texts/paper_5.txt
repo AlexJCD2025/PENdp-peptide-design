@@ -1,0 +1,124 @@
+================================================================================
+PAPER 5: MOLEA — Multi-Objective Optimization for LNP Engineering
+================================================================================
+
+Full Title: A multiobjective AI model for LNP engineering enhances tissue-selective
+mRNA delivery
+Authors: Muye Zhou, Yue Xu, Gen Li et al. (Bowen Li Lab, corresponding)
+Source: Nature Biotechnology, 2026
+DOI: 10.1038/s41587-026-03109-0
+URL: https://www.nature.com/articles/s41587-026-03109-0
+
+Note: The user referenced this as "bioRxiv 2025" but the published version is in
+Nature Biotechnology (2026).
+
+================================================================================
+KEY EXCERPT / ABSTRACT
+================================================================================
+
+"Lipid nanoparticle (LNP) delivery of RNA therapeutics is constrained by poor tissue
+selectivity and off-target toxicity. Most high-throughput screening approaches have
+focused on single-target efficacy while overlooking off-target uptake. Here we report
+multiobjective LNP engineering with artificial intelligence (MOLEA), a system that
+integrates high-dimensional lipid representations, cell-type-resolved transfection
+data and multitask optimization to design ionizable lipids with both high potency
+and biological selectivity."
+
+================================================================================
+THE PROBLEM
+================================================================================
+
+- LNP delivery of mRNA therapeutics suffers from poor tissue selectivity and
+  off-target toxicity (predominantly liver accumulation)
+- Existing high-throughput screens typically optimize for single-target efficacy
+  and ignore off-target uptake
+- Need for multi-objective optimization: maximize potency in target tissue while
+  minimizing off-target delivery (especially to hepatocytes)
+
+================================================================================
+MOLEA SYSTEM (Multi-Objective LNP Engineering with AI)
+================================================================================
+
+Integrates:
+1. High-dimensional lipid representations (molecular descriptors, graph neural
+   network embeddings via MoCL-GNN)
+2. Cell-type-resolved transfection data (target vs. non-target cell types)
+3. Multitask optimization to simultaneously maximize potency in target tissue and
+   minimize off-target delivery
+
+Key features:
+- Learns structure-function relationships across diverse cellular contexts
+- Enables rational design of ionizable lipids for preferential mRNA delivery
+  to a chosen tissue while avoiding the liver
+- Uses Pareto-optimal trade-off between target transfection and off-target
+  transfection
+
+TECHNICAL DETAILS:
+- Combinatorial lipid library → high-throughput synthesis and screening
+- AI model: Molecular contrastive learning (GNNs) + multitask neural networks
+- Lipid representation: Mordred molecular descriptors + MoCL-GNN embeddings
+- Formulation: Designed ionizable lipid + helper lipids + cholesterol + PEG-lipid
+- Microfluidic mixing for mRNA encapsulation
+
+================================================================================
+KEY RESULT: K9 LNPs FOR CARTILAGE DELIVERY
+================================================================================
+
+Applied MOLEA to cartilage (chondrocyte targeting) → developed K9 LNPs.
+
+Performance:
+- >90% transfection efficiency in mouse joint chondrocytes
+- 13.5-fold increase in knee-to-liver selectivity compared to clinical gold-standard
+  lipid SM-102
+- Demonstrated chondrocyte-specific Mmp13 editing using Cas9/sgRNA delivered by
+  K9 LNPs in osteoarthritis (OA) mouse model
+
+IN VIVO THERAPEUTIC APPLICATION (OA MODEL):
+- Destabilization of the medial meniscus (DMM) surgical OA model in mice
+- K9 LNPs carrying mRNA encoding Cas9 and sgRNA targeting MMP-13 (key driver of
+  cartilage degradation in OA)
+- Outcomes:
+  - Sustained cartilage protection (reduced OARSI scores, preserved cartilage
+    thickness and organization)
+  - Suppression of OA-associated immune responses and matrix remodeling (proteomics
+    and histology)
+  - Reduced osteoclast numbers and trabecular bone changes
+- Single or two weekly intra-articular injections (5 μg total RNA per joint)
+
+================================================================================
+BROADER IMPLICATIONS
+================================================================================
+
+- MOLEA is a generalizable framework for engineering LNPs with multi-objective
+  selectivity (not just potency but also tissue specificity)
+- Potential to extend to other tissues (lung, muscle, brain, etc.) beyond cartilage
+- Provides a blueprint for AI-driven design of cell-type-specific LNPs
+
+================================================================================
+DATA & CODE AVAILABILITY
+================================================================================
+
+- Sequencing data: NCBI BioProject PRJNA1440167
+- Code & data: GitHub: bowenli-lab/MOLEA
+- Zenodo: https://doi.org/10.5281/zenodo.18943783 (MIT license)
+
+================================================================================
+AUTHORS & FUNDING
+================================================================================
+
+- Lead corresponding: Bowen Li (University of Toronto, Leslie Dan Faculty of
+  Pharmacy, Princess Margaret Cancer Center, Vector Institute)
+- Equal contributions: Muye Zhou, Yue Xu, Gen Li
+- Funding: Acceleration Consortium, GSK Chair, CIHR, NIH, NSERC, Canada Research
+  Chairs, CFI, and others.
+
+================================================================================
+PENdp LITERATURE DATABASE ENTRY
+================================================================================
+
+Title: MOLEA: Multi-Objective Optimization for LNP Design
+Authors: Bowen Li Lab
+Source: bioRxiv / GitHub, 2025 (actual: Nature Biotech 2026)
+PENdp Relevance: AI优化LNP配方，可集成到PENdp的QSAR阶段
+Key Finding: 多目标Pareto优化同时优化效力、靶向性和安全性
+Priority: medium
