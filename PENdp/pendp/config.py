@@ -25,15 +25,29 @@ CPP_SCALER_PATH = DATA_DIR / "cpp_scaler_esm650.pkl"
 # Scoring system v2.0
 SCORING_DIMENSIONS = {
     "D1": {"name": "靶向基序",       "code": "target_motif",   "weight": 0.25, "col": 0},
-    "D2": {"name": "物化性质",       "code": "physiochem",     "weight": 0.20, "col": 1},
-    "D3": {"name": "积雪草酸协同",    "code": "asiatic_synergy","weight": 0.05, "col": 2},
-    "D4": {"name": "蛋白冠+LNP兼容",  "code": "corona_lnp",    "weight": 0.30, "col": 3},
+    "D2": {"name": "物化性质",       "code": "physiochem",     "weight": 0.18, "col": 1},  # V3: 20→18%
+    "D3": {"name": "积雪草酸协同",    "code": "asiatic_synergy","weight": 0.07, "col": 2},  # V3: 5→7%
+    "D4": {"name": "蛋白冠+LNP兼容",  "code": "corona_lnp",    "weight": 0.28, "col": 3},  # V3: 30→28%
     "D5": {"name": "Off-target规避",  "code": "off_target",    "weight": 0.10, "col": 4},
     "D6": {"name": "合成可行性",      "code": "synthesis",     "weight": 0.05, "col": 5},
-    "D7": {"name": "ESM相似度",       "code": "esm_similarity","weight": 0.05, "col": 6},
+    "D7": {"name": "ESM相似度",       "code": "esm_similarity","weight": 0.02, "col": 6},  # V3: 5→2%
+    "D9": {"name": "偶联定向性",       "code": "conjugation",    "weight": 0.05, "col": 7},  # V3: 正式接入
 }
 
 SYNTHESIS_THRESHOLD = 65  # 合成阈值：≥65分建议推进
+
+# ── V3 Gate System (PeptAI-inspired) ──
+# Gate criticalities and thresholds. Actual gate logic in scoring/gates.py
+GATE_CONFIG = {
+    "G1": {"dim": "D1", "criticality": "critical",    "pass": 6.0, "fail": 3.0},
+    "G2": {"dim": "D2", "criticality": "critical",    "pass": 5.0, "fail": 3.0},
+    "G3": {"dim": "D3", "criticality": "nice",        "pass": 5.0, "fail": 2.0},
+    "G4": {"dim": "D4", "criticality": "critical",    "pass": 5.0, "fail": 3.0},
+    "G5": {"dim": "D5", "criticality": "important",   "pass": 5.0, "fail": 3.0},
+    "G6": {"dim": "D6", "criticality": "important",   "pass": 5.0, "fail": 3.0},
+    "G7": {"dim": "D7", "criticality": "nice",        "pass": 5.0, "fail": 1.0},
+    "G8": {"dim": "D9", "criticality": "nice",        "pass": 5.0, "fail": 2.0},
+}
 
 # Database files (fallback: builtin data)
 DATABASE_FILES = {

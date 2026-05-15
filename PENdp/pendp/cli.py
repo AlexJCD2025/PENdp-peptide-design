@@ -4,8 +4,12 @@ PENdp AI Peptide Design Platform — CLI Entry Point
 
 Usage:
     pendp score --seq CRGDKGPDC                     Score a peptide
-    pendp score --file seqs.txt                      Score from file
-    pendp score compare --a CRGDKGPDC --b KPSSPPEE   Compare two peptides
+    pendp score --seq X --gates                       🔬 V3: Gate pipeline
+    pendp score --seq X --gates --log-json            📋 V4: Gate audit log
+    pendp score --seq X --gates --calibrate           🎯 G0 calibration
+    pendp score --seq X --structure                   🔬 Structure analysis
+    pendp score --seq X --evolve --rounds 3           🧬 V4: Directed evolution
+    pendp score --file seqs.txt --gates --rank        📊 V4: Batch gate ranking
 
     pendp db list                                     List lung v6 database
     pendp db search --query RGD                       Search peptides
@@ -52,6 +56,20 @@ def main():
     p_score.add_argument("--esm", type=str, default=None,
                          choices=["8M", "35M", "150M", "650M"],
                          help="ESM-2 model for D7 scoring")
+    p_score.add_argument("--gates", action="store_true", default=False,
+                         help="🔬 V3/V4: Run gate pipeline (PASS/FAIL/COND)")
+    p_score.add_argument("--calibrate", action="store_true", default=False,
+                         help="🎯 V4: G0 calibration with reference peptides")
+    p_score.add_argument("--log-json", action="store_true", default=False,
+                         help="📋 V4: Output gate decisions as JSONL audit log")
+    p_score.add_argument("--structure", action="store_true", default=False,
+                         help="🔬 V4: Run structure analysis (Chou-Fasman + ESM)")
+    p_score.add_argument("--evolve", action="store_true", default=False,
+                         help="🧬 V4: Virtual directed evolution")
+    p_score.add_argument("--rounds", type=int, default=3,
+                         help="Evolution rounds (default: 3)")
+    p_score.add_argument("--rank", action="store_true", default=False,
+                         help="📊 V4: Gate-aware ranking (with --file)")
     p_score.add_argument("--verbose", action="store_true", default=True)
 
     # ── compare ──
@@ -200,10 +218,66 @@ def cmd_score(args):
         engine.esm_model = model
         engine.esm_tokenizer = tokenizer
 
+    # ── V4: G0 Calibration ──
+    if args.calibrate:
+        from pendp.scoring.gates import GatePipeline
+        pipeline = GatePipeline(log_json=args.log_json)
+        pipeline.calibrate(scoring_engine=engine)
+        if args.log_json:
+            print(pipeline.flush_json())
+        return
+
+    # ── V4: Structure analysis ──
+    if args.structure:
+        for seq in sequences:
+            from pendp.scoring.structure import StructureAnalyzer, structure_score
+            a = StructureAnalyzer(engine.esm_model if args.esm else None).analyze(seq)
+            ss = structure_score(seq)
+            print(StructureAnalyzer().summary(a))
+            print(f"  Structure Quality Score: {ss}/10")
+        return
+
+    # ── V4: Directed evolution ──
+    if args.evolve:
+        for seq in sequences:
+            from pendp.scoring.evolution import DirectedEvolution
+            evolver = DirectedEvolution(scoring_engine=engine)
+            result = evolver.evolve(seq, rounds=args.rounds, verbose=True)
+            print(evolver.evolution_summary(result))
+        return
+
+    # ── V4: Batch gate ranking (with --file) ──
+    if args.rank and args.file and args.gates:
+        named = {f"seq_{i}": s for i, s in enumerate(sequences)}
+        batch = engine.batch_gate_score(named, log_json=args.log_json)
+        from pendp.scoring.gates import GatePipeline
+        pipeline = batch["pipeline"]
+        ranked = [(r["name"], r) for r in batch["ranked"]]
+        # Reconstruct ranked as gate results
+        ranked_grs = []
+        for name, info in ranked:
+            sr = engine.score_sequence(info["sequence"])
+            dims = {dim_id: d["score"] for dim_id, d in sr["dimensions"].items()}
+            # We need a GatePipelineResult; reuse from batch
+            ranked_grs.append((name, None, info["combined_score"]))
+        if batch["json_log"]:
+            print(batch["json_log"])
+        return
+
+    # ── Standard scoring (with optional gates) ──
     for seq in sequences:
-        result = engine.score_sequence(seq, verbose=args.verbose)
+        if args.gates:
+            result = engine.score_with_gates(seq, verbose=args.verbose, log_json=args.log_json)
+            if args.log_json and "gate_pipeline" in result:
+                print(result["gate_pipeline"].get("json_log", ""))
+        else:
+            result = engine.score_sequence(seq, verbose=args.verbose)
         if not args.verbose:
-            print(f"{seq}: {result['total_score']}/100 [{result['recommendation']}]")
+            gate_info = ""
+            if args.gates and "gate_pipeline" in result:
+                gp = result["gate_pipeline"]
+                gate_info = f" [{gp['overall_status']}]"
+            print(f"{seq}: {result['total_score']}/100 [{result['recommendation']}]{gate_info}")
 
 
 def cmd_compare(args):

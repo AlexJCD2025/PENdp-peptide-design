@@ -488,9 +488,115 @@ class ScoringEngine:
 
         return result
 
+    def score_with_gates(self, seq: str, target_hint: str = "",
+                         verbose: bool = False, log_json: bool = False) -> Dict:
+        """Score a peptide and run through V3 gate pipeline.
+
+        Returns the full scoring result PLUS gate evaluation.
+        Gate FAIL on critical gates → eliminated regardless of total score.
+        """
+        # First, run standard scoring
+        base_result = self.score_sequence(seq, target_hint, verbose=False)
+
+        # Extract dimension scores for gate evaluation
+        dim_scores = {
+            dim_id: base_result["dimensions"][dim_id]["score"]
+            for dim_id in base_result["dimensions"]
+        }
+
+        # Run gate pipeline
+        from pendp.scoring.gates import GatePipeline
+        pipeline = GatePipeline(log_json=log_json)
+        gate_result = pipeline.evaluate(dim_scores, seq)
+
+        # Merge gate info into result
+        gate_dict = {
+            "overall_status": gate_result.overall_status,
+            "eliminated": gate_result.eliminated,
+            "elimination_reason": gate_result.elimination_reason if gate_result.eliminated else "",
+            "can_proceed": gate_result.can_proceed,
+            "pass_rate": round(gate_result.pass_rate * 100, 1),
+            "gate_score": gate_result.gate_score,
+            "critical_pass": gate_result.critical_pass_count,
+            "cond_count": gate_result.cond_count,
+            "gates": [],
+        }
+        for gr in gate_result.results:
+            gate_dict["gates"].append({
+                "gate_id": gr.gate.gate_id,
+                "name": gr.gate.name,
+                "criticality": gr.gate.criticality.value,
+                "status": gr.status.value,
+                "score": gr.score,
+                "message": gr.message,
+            })
+
+        base_result["gate_pipeline"] = gate_dict
+
+        # V4: Attach JSON log if requested
+        if log_json:
+            base_result["gate_pipeline"]["json_log"] = pipeline.flush_json()
+
+        # Override recommendation if eliminated
+        if gate_result.eliminated:
+            base_result["recommendation"] = "gate_eliminated"
+            base_result["meets_threshold"] = False
+
+        if verbose:
+            # Print standard scoring
+            print(f"\n{'='*50}")
+            print(f"PENdp V3 Score + Gates: {seq}")
+            print(f"{'='*50}")
+            for dim_id, d in sorted(base_result["dimensions"].items()):
+                bar = "█" * int(d["score"]) + "░" * (10 - int(d["score"]))
+                print(f"  {dim_id} {d['name']:12s} [{d['weight']:>3s}]  "
+                      f"{d['score']:4.1f}/10 {bar}")
+            print(f"{'─'*50}")
+            print(f"  TOTAL: {base_result['total_score']}/100")
+
+            # Print gate results
+            print(pipeline.summary(gate_result))
+
+        return base_result
+
     def score_multiple(self, sequences: List[str]) -> List[Dict]:
         """Score multiple sequences."""
         return [self.score_sequence(seq) for seq in sequences]
+
+    def batch_gate_score(self, sequences: Dict[str, str],
+                         log_json: bool = False) -> Dict:
+        """V4: Batch score + gate + rank multiple peptides.
+
+        Args:
+            sequences: {name: seq} dict
+            log_json: Enable JSON audit log
+
+        Returns:
+            Dict with ranked results, gate pipeline, and optional JSON log
+        """
+        from pendp.scoring.gates import GatePipeline
+        pipeline = GatePipeline(log_json=log_json)
+        ranked = pipeline.evaluate_batch(sequences, scoring_engine=self)
+
+        results = []
+        for name, gate_result, combined in ranked:
+            sr = self.score_sequence(sequences[name])
+            results.append({
+                "name": name,
+                "sequence": sequences[name],
+                "total_score": sr["total_score"],
+                "gate_status": gate_result.overall_status,
+                "gate_score": gate_result.gate_score,
+                "combined_score": combined,
+                "eliminated": gate_result.eliminated,
+                "can_proceed": gate_result.can_proceed,
+            })
+
+        return {
+            "ranked": results,
+            "pipeline": pipeline,
+            "json_log": pipeline.flush_json() if log_json else "",
+        }
 
     def batch_compare(self, seq_a: str, seq_b: str) -> Dict:
         """Compare two sequences dimension by dimension."""
