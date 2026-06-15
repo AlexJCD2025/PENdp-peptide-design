@@ -19,12 +19,29 @@ from pathlib import Path
 from typing import Callable, Dict, List, Optional
 import csv
 import math
+import os
 
 import numpy as np
 
 from pendp.config import DATA_DIR
 
-DEFAULT_DATASET = DATA_DIR / "wetlab_results.csv"
+
+def default_dataset_path() -> Path:
+    """Resolve where wet-lab results live, in priority order:
+
+    1. $PENDP_WETLAB_DATA, if set (explicit override).
+    2. The in-tree data file, when running from a checkout / editable install
+       (DATA_DIR exists). This is the common dev path.
+    3. A user-writable fallback (~/.pendp/wetlab_results.csv) — used when
+       installed from a wheel, where DATA_DIR is not packaged and the install
+       dir may be read-only.
+    """
+    env = os.environ.get("PENDP_WETLAB_DATA")
+    if env:
+        return Path(env)
+    if DATA_DIR.exists():
+        return DATA_DIR / "wetlab_results.csv"
+    return Path.home() / ".pendp" / "wetlab_results.csv"
 
 SCHEMA_COLUMNS = [
     "sequence", "target", "assay", "readout", "value", "unit",
@@ -56,7 +73,7 @@ class WetlabRecord:
 def load_dataset(path=None) -> List[WetlabRecord]:
     """Load wet-lab results from a CSV with SCHEMA_COLUMNS. Rows missing a
     sequence or a numeric value are skipped."""
-    path = Path(path) if path else DEFAULT_DATASET
+    path = Path(path) if path else default_dataset_path()
     if not path.exists():
         return []
     records: List[WetlabRecord] = []

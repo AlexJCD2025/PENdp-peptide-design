@@ -590,11 +590,12 @@ def cmd_target(args):
             for d in t['diseases']:
                 print(f"    关联疾病: {d}")
 def cmd_eval(args):
-    from pendp.eval import load_dataset, evaluate_scoring, DEFAULT_DATASET, SCHEMA_COLUMNS
-    path = args.dataset or DEFAULT_DATASET
+    from pendp.eval import load_dataset, evaluate_scoring, default_dataset_path, SCHEMA_COLUMNS
+    path = args.dataset or default_dataset_path()
     records = load_dataset(path)
     if not records:
         print(f"ℹ️  No wet-lab results found in {path}.")
+        print(f"   (override the location with $PENDP_WETLAB_DATA)")
         print(f"   Add rows under this header, then re-run `pendp eval`:")
         print(f"   {','.join(SCHEMA_COLUMNS)}")
         print(f"   (direction = higher_better | lower_better)")

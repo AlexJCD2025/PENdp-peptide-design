@@ -107,6 +107,21 @@ def test_empty_dataset():
     check(load_dataset("/nonexistent/path/xyz.csv") == [], "missing file returns []")
 
 
+def test_default_dataset_path():
+    print("\n📋 default_dataset_path resolution (wheel-safe)")
+    from pendp.eval import default_dataset_path
+    import importlib, pendp.eval as ev
+    # env override wins
+    os.environ["PENDP_WETLAB_DATA"] = "/tmp/custom_pendp.csv"
+    try:
+        check(str(default_dataset_path()) == "/tmp/custom_pendp.csv", "$PENDP_WETLAB_DATA override honored")
+    finally:
+        del os.environ["PENDP_WETLAB_DATA"]
+    # no override → a concrete path (in-tree when checkout, else ~/.pendp)
+    p = default_dataset_path()
+    check(p.name == "wetlab_results.csv", "default resolves to wetlab_results.csv")
+
+
 if __name__ == "__main__":
     print("=" * 50)
     print("PENdp eval harness tests (Phase 0)")
@@ -118,6 +133,7 @@ if __name__ == "__main__":
     test_small_n_guard()
     test_loader_roundtrip()
     test_empty_dataset()
+    test_default_dataset_path()
 
     print("\n" + "=" * 50)
     print(f"结果: {PASS}/{PASS + FAIL} 通过  ({FAIL} 失败)")
