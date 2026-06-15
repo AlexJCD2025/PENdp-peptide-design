@@ -495,7 +495,8 @@ class ScoringEngine:
         if self.esm_model is not None:
             try:
                 from pendp.esm.embeddings import calc_similarity_to_reference
-                sim = calc_similarity_to_reference(seq, self.esm_model)
+                sim = calc_similarity_to_reference(
+                    seq, self.esm_model, getattr(self, "esm_tokenizer", None))
                 scores["D7"] = sim * 10.0  # Scale 0-1 to 0-10
             except Exception:
                 scores["D7"] = 5.0

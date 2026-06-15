@@ -56,6 +56,7 @@ class PipelineOrchestrator:
         self.esm_model = model
         self.esm_tokenizer = tokenizer
         self.scoring_engine.esm_model = model
+        self.scoring_engine.esm_tokenizer = tokenizer
         return config
 
     # ── Stage 0: Decision Framework ──

@@ -28,9 +28,9 @@ D14_WEIGHT = 0.05  # Borrowed from D2(2.5%) + D4(2.5%)
 # Scoring system v2.0
 SCORING_DIMENSIONS = {
     "D1": {"name": "靶向基序",       "code": "target_motif",   "weight": 0.25, "col": 0},
-    "D2": {"name": "物化性质",       "code": "physiochem",     "weight": 0.18, "col": 1},  # V3: 20→18%
+    "D2": {"name": "物化性质",       "code": "physiochem",     "weight": 0.155, "col": 1},  # V3: 20→18%; V4.4: −2.5% → D14
     "D3": {"name": "积雪草酸协同",    "code": "asiatic_synergy","weight": 0.07, "col": 2},  # V3: 5→7%
-    "D4": {"name": "蛋白冠+LNP兼容",  "code": "corona_lnp",    "weight": 0.28, "col": 3},  # V3: 30→28%
+    "D4": {"name": "蛋白冠+LNP兼容",  "code": "corona_lnp",    "weight": 0.255, "col": 3},  # V3: 30→28%; V4.4: −2.5% → D14
     "D5": {"name": "Off-target规避",  "code": "off_target",    "weight": 0.10, "col": 4},
     "D6": {"name": "合成可行性",      "code": "synthesis",     "weight": 0.05, "col": 5},
     "D7": {"name": "ESM相似度",       "code": "esm_similarity","weight": 0.02, "col": 6},  # V3: 5→2%
