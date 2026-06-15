@@ -54,8 +54,9 @@ FLEXIBILITY = {
 class StructureAnalyzer:
     """Analyze peptide structural features from sequence alone."""
 
-    def __init__(self, esm_model=None):
+    def __init__(self, esm_model=None, esm_tokenizer=None):
         self.esm_model = esm_model
+        self.esm_tokenizer = esm_tokenizer
 
     def analyze(self, seq: str) -> Dict:
         """Full structural analysis of a peptide sequence.
@@ -160,7 +161,7 @@ class StructureAnalyzer:
         """Extract features from ESM-2 embedding."""
         try:
             from pendp.esm.embeddings import get_embedding
-            emb = get_embedding(seq, self.esm_model)
+            emb = get_embedding(self.esm_model, self.esm_tokenizer, seq)
             # Per-position embedding variance (disorder proxy)
             pos_var = float(emb.var())
             # Embedding norm (compactness proxy)
@@ -194,9 +195,9 @@ class StructureAnalyzer:
 
 # ── Quick API ──
 
-def analyze_structure(seq: str, esm_model=None) -> Dict:
+def analyze_structure(seq: str, esm_model=None, esm_tokenizer=None) -> Dict:
     """One-shot structure analysis."""
-    analyzer = StructureAnalyzer(esm_model)
+    analyzer = StructureAnalyzer(esm_model, esm_tokenizer)
     return analyzer.analyze(seq)
 
 

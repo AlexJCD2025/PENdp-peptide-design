@@ -351,7 +351,68 @@ DIMENSION_FUNCTIONS = {
     "D5": lambda seq: score_off_target(seq),
     "D6": lambda seq: score_synthesis(seq),
     "D9": lambda seq: score_conjugation_orientation(seq),
+    "D14": lambda seq: score_dl_confidence(seq),
 }
+
+
+def score_dl_confidence(seq: str) -> float:
+    """D14: Deep Learning / AlphaFold confidence proxy (5% weight).
+
+    Scores sequence features correlated with structural prediction confidence:
+    - Length suitable for AF3 prediction
+    - Cyclization indicator
+    - Glycine/proline content balance
+    - Hydrophobic core potential
+    - Charge distribution
+
+    Added in PENdp P0: single source of truth for D14 scoring.
+    """
+    seq_upper = seq.upper()
+    n = len(seq_upper)
+    if n == 0:
+        return 0.0
+
+    score = 5.0  # Baseline
+
+    # Length sweet spot for AF prediction
+    if 10 <= n <= 30:
+        score += 1.5
+    elif n < 10:
+        score += 0.5  # Short peptides are easy
+    else:
+        score -= 1.0  # Long peptides are hard for AF
+
+    # Cyclization = better foldability
+    if seq_upper.startswith("C") and seq_upper.endswith("C"):
+        score += 1.5
+
+    # Glycine content (too much = unstructured)
+    glycine_count = seq_upper.count("G")
+    gly_ratio = glycine_count / max(n, 1)
+    if gly_ratio > 0.3:
+        score -= 1.0
+    elif gly_ratio < 0.1:
+        score += 0.5
+
+    # Proline content (too much = rigidity issues)
+    pro_count = seq_upper.count("P")
+    pro_ratio = pro_count / max(n, 1)
+    if pro_ratio > 0.3:
+        score -= 0.5
+
+    # Hydrophobic residues signal structured core
+    hydrophobic = sum(1 for aa in seq_upper if aa in "AVILMFWY")
+    h_ratio = hydrophobic / max(n, 1)
+    if 0.2 <= h_ratio <= 0.5:
+        score += 1.0
+
+    # Charged residue balance (well-folded proteins have balanced charge)
+    charged = sum(1 for aa in seq_upper if aa in "RKDE")
+    c_ratio = charged / max(n, 1)
+    if 0.15 <= c_ratio <= 0.4:
+        score += 0.5
+
+    return round(min(max(score, 0), 10.0), 1)
 
 
 def score_conjugation_orientation(seq: str) -> float:
@@ -419,6 +480,21 @@ class ScoringEngine:
             dict with scores, total, and dimension breakdown
         """
         from pendp.config import SCORING_DIMENSIONS
+        from pendp.scoring.gates import validate_sequence
+
+        # Centralized validation: reject invalid input instead of scoring garbage.
+        normalized, error = validate_sequence(seq)
+        if error:
+            return {
+                "sequence": seq,
+                "target_hint": target_hint,
+                "total_score": 0.0,
+                "meets_threshold": False,
+                "recommendation": "invalid_sequence",
+                "error": error,
+                "dimensions": {},
+            }
+        seq = normalized
 
         scores = {}
         weights = {}
@@ -434,7 +510,8 @@ class ScoringEngine:
         if self.esm_model is not None:
             try:
                 from pendp.esm.embeddings import calc_similarity_to_reference
-                sim = calc_similarity_to_reference(seq, self.esm_model)
+                sim = calc_similarity_to_reference(
+                    seq, self.esm_model, getattr(self, "esm_tokenizer", None))
                 scores["D7"] = sim * 10.0  # Scale 0-1 to 0-10
             except Exception:
                 scores["D7"] = 5.0
@@ -497,6 +574,8 @@ class ScoringEngine:
         """
         # First, run standard scoring
         base_result = self.score_sequence(seq, target_hint, verbose=False)
+        if "error" in base_result:
+            return base_result  # Invalid sequence — skip gate evaluation
 
         # Extract dimension scores for gate evaluation
         dim_scores = {

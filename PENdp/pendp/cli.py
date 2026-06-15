@@ -47,6 +47,9 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
+    from pendp import __version__
+    parser.add_argument("--version", action="version",
+                        version=f"PENdp {__version__}")
     sub = parser.add_subparsers(dest="command", help="Command")
 
     # ── score ──
@@ -80,7 +83,7 @@ def main():
     # ── cpp ──
     p_cpp = sub.add_parser("cpp", help="Predict CPP")
     p_cpp.add_argument("--seq", type=str, required=True, help="Peptide sequence")
-    p_cpp.add_argument("--verbose", action="store_true", default=True)
+    p_cpp.add_argument("--verbose", action="store_true", default=False)
 
     # ── score curated ──
     p_score_curated = sub.add_parser("curated", help="Curated reference score")
@@ -200,7 +203,6 @@ def main():
 
 def cmd_score(args):
     from pendp.scoring.engine import ScoringEngine
-    from pendp.esm.model import load_esm_model
 
     sequences = []
     if args.seq:
@@ -216,6 +218,7 @@ def cmd_score(args):
     engine = ScoringEngine()
 
     if args.esm:
+        from pendp.esm.model import load_esm_model
         print(f"Loading ESM-2 {args.esm}...")
         model, tokenizer, _ = load_esm_model(args.esm)
         engine.esm_model = model
@@ -237,7 +240,11 @@ def cmd_score(args):
             if not seq.strip():
                 print("❌ Empty sequence — skipping structure analysis")
                 continue
-            a = StructureAnalyzer(engine.esm_model if args.esm else None).analyze(seq)
+            analyzer = StructureAnalyzer(
+                engine.esm_model if args.esm else None,
+                engine.esm_tokenizer if args.esm else None,
+            )
+            a = analyzer.analyze(seq)
             if "error" in a:
                 print(f"❌ {seq}: {a['error']}")
                 continue
@@ -284,6 +291,9 @@ def cmd_score(args):
                 print(result["gate_pipeline"].get("json_log", ""))
         else:
             result = engine.score_sequence(seq, verbose=args.verbose)
+        if "error" in result:
+            print(f"❌ {seq}: {result['error']}")
+            continue
         if not args.verbose:
             gate_info = ""
             if args.gates and "gate_pipeline" in result:

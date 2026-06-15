@@ -109,6 +109,7 @@ class GatePipelineResult:
     critical_fail_count: int = 0
     cond_count: int = 0
     total_configured_gates: int = 0   # total gates in the pipeline (fixed)
+    total_ci_gates: int = 0           # CRITICAL + IMPORTANT gates configured
     calibration_baselines: Dict[str, Dict] = field(default_factory=dict)
 
     @property
@@ -125,7 +126,7 @@ class GatePipelineResult:
         if self.eliminated:
             return f"❌ ELIMINATED (at G{self.total_gates}/{self.total_configured_gates})"
         ci_pass = self.critical_pass_count + self.important_pass_count
-        ci_total = self.total_configured_gates  # use configured not evaluated
+        ci_total = self.total_ci_gates  # CRITICAL + IMPORTANT gates only
         if self.cond_count > 0:
             return f"⚠️ CONDITIONAL ({ci_pass}/{ci_total} CI-PASS)"
         return f"✅ PASSED ({ci_pass}/{ci_total} CI-PASS)"
@@ -134,7 +135,7 @@ class GatePipelineResult:
     def can_proceed(self) -> bool:
         if self.eliminated:
             return False
-        ci_total = 5  # G1,G2,G4(CRITICAL) + G5,G6(IMPORTANT) = 5
+        ci_total = self.total_ci_gates  # CRITICAL + IMPORTANT gates configured
         ci_pass = self.critical_pass_count + self.important_pass_count
         if ci_total > 0 and ci_pass / ci_total < 0.75:
             return False
@@ -249,6 +250,14 @@ PENDP_GATES: List[GateDef] = [
         fail_message="偶联方向性差 — 可能降低LNP表面展示效率",
         cond_suggestion="在C端添加Cys用于maleimide定点偶联；减少内部Lys(≤1个)避免多点连接",
     ),
+    GateDef(
+        gate_id="G9", name="结构置信度参考", dimension="D14",
+        criticality=GateCriticality.NICE_TO_HAVE,
+        pass_threshold=5.0, fail_threshold=2.0,
+        description="Deep-learning / AlphaFold confidence proxy (foldability, length, cyclization)",
+        fail_message="结构置信度低 — 序列可能难以折叠/AF预测置信度差",
+        cond_suggestion="将长度控制在10-30aa利于折叠；引入N/C端Cys形成二硫约束；降低Gly比例(<30%)避免无序",
+    ),
 ]
 
 
@@ -358,7 +367,15 @@ class GatePipeline:
         audit consistency.
         """
         ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-        result = GatePipelineResult(sequence=sequence, total_configured_gates=self.total_configured)
+        ci_gates = sum(
+            1 for g in self.gates
+            if g.criticality in (GateCriticality.CRITICAL, GateCriticality.IMPORTANT)
+        )
+        result = GatePipelineResult(
+            sequence=sequence,
+            total_configured_gates=self.total_configured,
+            total_ci_gates=ci_gates,
+        )
         if self._calibration:
             result.calibration_baselines = self._calibration
 

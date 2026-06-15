@@ -1,0 +1,7 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+# Project metadata is defined in setup.py (kept as the single source to
+# avoid duplication). This file declares the build backend so that
+# `pip install -e .` uses a standardized, isolated build.
