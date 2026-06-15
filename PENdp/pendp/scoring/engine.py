@@ -480,6 +480,21 @@ class ScoringEngine:
             dict with scores, total, and dimension breakdown
         """
         from pendp.config import SCORING_DIMENSIONS
+        from pendp.scoring.gates import validate_sequence
+
+        # Centralized validation: reject invalid input instead of scoring garbage.
+        normalized, error = validate_sequence(seq)
+        if error:
+            return {
+                "sequence": seq,
+                "target_hint": target_hint,
+                "total_score": 0.0,
+                "meets_threshold": False,
+                "recommendation": "invalid_sequence",
+                "error": error,
+                "dimensions": {},
+            }
+        seq = normalized
 
         scores = {}
         weights = {}
@@ -559,6 +574,8 @@ class ScoringEngine:
         """
         # First, run standard scoring
         base_result = self.score_sequence(seq, target_hint, verbose=False)
+        if "error" in base_result:
+            return base_result  # Invalid sequence — skip gate evaluation
 
         # Extract dimension scores for gate evaluation
         dim_scores = {

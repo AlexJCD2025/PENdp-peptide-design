@@ -94,6 +94,30 @@ def test_boundary_sequences():
     check(0.0 <= t <= 100.0, f"60-mer scored in range ({t})")
 
 
+def test_input_validation():
+    print("\n📋 Invalid sequences rejected, not scored")
+    from pendp.scoring.engine import ScoringEngine
+    engine = ScoringEngine()
+    r = engine.score_sequence("!!!!")
+    check("error" in r, "invalid sequence returns error result")
+    check(r["total_score"] == 0.0, "invalid sequence scores 0.0, not a plausible value")
+    check(r["recommendation"] == "invalid_sequence", "recommendation = invalid_sequence")
+    # lowercase is normalized, not rejected
+    check("error" not in engine.score_sequence("crgdkgpdc"), "lowercase normalized (not rejected)")
+    rg = engine.score_with_gates("12345")
+    check("error" in rg, "score_with_gates short-circuits on invalid input")
+
+
+def test_ci_pass_denominator():
+    print("\n📋 Gate CI-PASS denominator counts only CI gates")
+    from pendp.scoring.engine import ScoringEngine
+    from pendp.scoring.gates import PENDP_GATES, GateCriticality
+    ci = sum(1 for g in PENDP_GATES
+             if g.criticality in (GateCriticality.CRITICAL, GateCriticality.IMPORTANT))
+    status = ScoringEngine().score_with_gates("CRGDKGPDC")["gate_pipeline"]["overall_status"]
+    check(f"/{ci} CI-PASS" in status, f"denominator is {ci} (CI gates), not total gates — got: {status}")
+
+
 if __name__ == "__main__":
     print("=" * 50)
     print("PENdp V4.4 fix regression tests")
@@ -105,6 +129,8 @@ if __name__ == "__main__":
     test_d14_dimension()
     test_g9_gate()
     test_boundary_sequences()
+    test_input_validation()
+    test_ci_pass_denominator()
 
     print("\n" + "=" * 50)
     print(f"结果: {PASS}/{PASS + FAIL} 通过  ({FAIL} 失败)")

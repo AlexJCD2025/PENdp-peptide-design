@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11"]
+    defaults:
+      run:
+        working-directory: PENdp
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install package (core deps only, no torch/MLX)
+        run: pip install -e .
+
+      - name: Assert scoring works without torch/MLX
+        run: |
+          python -c "import pendp.esm.model; print('esm.model imports without torch: OK')"
+          python -m pendp.cli --version
+          python -m pendp.cli score --seq CRGDKGPDC
+
+      - name: Run test suites
+        run: |
+          python tests/test_all.py
+          python tests/test_d14_regression.py
+          python tests/test_v44_fixes.py
