@@ -74,6 +74,27 @@ def test_per_dimension_and_baseline():
     check(rep.beats_baseline() in (True, False), "beats_baseline() returns a verdict")
 
 
+def test_grouping_incomparable_assays():
+    print("\n📋 Correlations grouped by comparable condition (not pooled)")
+    from pendp.scoring.engine import ScoringEngine
+    from pendp.eval import evaluate_scoring, WetlabRecord
+    engine = ScoringEngine()
+    a = ["CRGDKGPDC", "RWKFGGFK", "CNGRC", "CREKA"]
+    b = ["KPSSPPEE", "RRRRRRRRRR", "AAAA", "YHWYGYTPQNVI"]
+    recs = []
+    # group A: nM scale (lower_better); group B: % scale (higher_better) with huge offset
+    for s in a:
+        recs.append(WetlabRecord(s, value=-engine.score_sequence(s)["total_score"],
+                                 direction="lower_better", assay="binding", unit="nM"))
+    for s in b:
+        recs.append(WetlabRecord(s, value=1000 + engine.score_sequence(s)["total_score"],
+                                 direction="higher_better", assay="delivery", unit="pct"))
+    rep = evaluate_scoring(recs)
+    check(len(rep.groups) == 2, f"two comparable groups detected (got {len(rep.groups)})")
+    check(all(g.n == 4 for g in rep.groups), "each group has its 4 records")
+    check(rep.spearman > 0.8, f"within-group n-weighted ρ stays high (got {rep.spearman:.3f})")
+
+
 def test_small_n_guard():
     print("\n📋 n<3 returns NaN with a note, no crash")
     from pendp.eval import evaluate_scoring, WetlabRecord
@@ -130,6 +151,7 @@ if __name__ == "__main__":
     test_correlation_higher_better()
     test_direction_lower_better()
     test_per_dimension_and_baseline()
+    test_grouping_incomparable_assays()
     test_small_n_guard()
     test_loader_roundtrip()
     test_empty_dataset()

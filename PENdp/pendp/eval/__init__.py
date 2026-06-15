@@ -188,13 +188,23 @@ def _baseline_spearman(sequences: List[str], y_eff: List[float]) -> float:
 
 
 @dataclass
-class EvalReport:
+class GroupResult:
+    key: tuple                 # (target, assay, readout, unit)
     n: int
-    n_skipped: int
     spearman: float
     pearson: float
+    baseline_spearman: float
+
+
+@dataclass
+class EvalReport:
+    n: int                     # total valid records (across groups)
+    n_skipped: int
+    spearman: float            # n-weighted mean of per-group Spearman
+    pearson: float             # n-weighted mean of per-group Pearson
     per_dimension_spearman: Dict[str, float] = field(default_factory=dict)
     baseline_spearman: float = float("nan")
+    groups: List[GroupResult] = field(default_factory=list)
     note: str = ""
 
     def beats_baseline(self) -> Optional[bool]:
@@ -208,22 +218,29 @@ class EvalReport:
             "PENdp Scoring Evaluation (ROADMAP Phase 0)",
             f"{'='*56}",
             f"  Records used: {self.n}   (skipped: {self.n_skipped})",
+            f"  Comparable groups (target/assay/readout/unit): {len(self.groups)}",
         ]
         if self.note:
             lines.append(f"  ⚠️  {self.note}")
-        if self.n >= 3:
+        if not math.isnan(self.spearman):
             lines.append(f"  {'─'*52}")
-            lines.append(f"  Total score  → outcome   Spearman ρ = {self.spearman:+.3f}")
-            lines.append(f"                            Pearson  r = {self.pearson:+.3f}")
+            lines.append(f"  Within-group, n-weighted   Spearman ρ = {self.spearman:+.3f}")
+            lines.append(f"                              Pearson  r = {self.pearson:+.3f}")
             lines.append(f"  Naive baseline (len/charge/hydro) ρ = {self.baseline_spearman:+.3f}")
             verdict = self.beats_baseline()
             if verdict is True:
                 lines.append("  ✅ Heuristic scorer beats the naive baseline.")
             elif verdict is False:
                 lines.append("  ❌ Heuristic scorer does NOT beat the naive baseline.")
+            if len(self.groups) > 1:
+                lines.append(f"  {'─'*52}")
+                lines.append("  Per-group ρ (pooling across these would be invalid):")
+                for g in self.groups:
+                    label = "/".join(x for x in g.key if x) or "(unlabeled)"
+                    lines.append(f"    {label:32s} n={g.n:<3d} ρ={g.spearman:+.3f}")
             if self.per_dimension_spearman:
                 lines.append(f"  {'─'*52}")
-                lines.append("  Per-dimension ρ vs outcome (predictive power):")
+                lines.append("  Per-dimension ρ vs outcome (within-group, n-weighted):")
                 for d, rho in sorted(self.per_dimension_spearman.items(),
                                      key=lambda kv: (math.isnan(kv[1]), -abs(kv[1]) if not math.isnan(kv[1]) else 0)):
                     flag = "" if math.isnan(rho) else ("  ⟵ strong" if abs(rho) >= 0.4 else ("  ·noise?" if abs(rho) < 0.1 else ""))
@@ -232,9 +249,24 @@ class EvalReport:
         return "\n".join(lines)
 
 
+def _weighted_mean(pairs) -> float:
+    """n-weighted mean over (value, weight), ignoring NaN values."""
+    num = den = 0.0
+    for v, w in pairs:
+        if not math.isnan(v):
+            num += v * w
+            den += w
+    return num / den if den > 0 else float("nan")
+
+
 def evaluate_scoring(records: List[WetlabRecord],
                      scorer: Optional[Callable[[str], Dict]] = None) -> EvalReport:
     """Correlate a scorer against measured outcomes.
+
+    Correlations are computed WITHIN comparable groups — keyed by
+    (target, assay, readout, unit) — and aggregated as an n-weighted mean.
+    Pooling raw outcomes across different assays/units (e.g. nM affinity vs
+    %delivery) is statistically invalid, so it is never done.
 
     Args:
         records: wet-lab records (with value + direction).
@@ -245,42 +277,52 @@ def evaluate_scoring(records: List[WetlabRecord],
         from pendp.scoring.engine import ScoringEngine
         scorer = ScoringEngine().score_sequence
 
-    seqs: List[str] = []
-    totals: List[float] = []
-    dim_rows: List[Dict[str, float]] = []
-    ys: List[float] = []
+    # Score each record, bucketed by comparable condition.
+    buckets: Dict[tuple, Dict[str, list]] = {}
     skipped = 0
-
+    n_valid = 0
     for r in records:
         res = scorer(r.sequence)
         if "error" in res or not res.get("dimensions"):
             skipped += 1
             continue
-        seqs.append(r.sequence)
-        totals.append(res["total_score"])
-        dim_rows.append({d: res["dimensions"][d]["score"] for d in res["dimensions"]})
-        ys.append(r.effective_outcome)
+        n_valid += 1
+        key = (r.target, r.assay, r.readout, r.unit)
+        b = buckets.setdefault(key, {"seqs": [], "totals": [], "dims": [], "ys": []})
+        b["seqs"].append(r.sequence)
+        b["totals"].append(res["total_score"])
+        b["dims"].append({d: res["dimensions"][d]["score"] for d in res["dimensions"]})
+        b["ys"].append(r.effective_outcome)
 
-    n = len(seqs)
-    if n < 3:
-        return EvalReport(n=n, n_skipped=skipped, spearman=float("nan"),
-                          pearson=float("nan"),
-                          note="Need >= 3 valid records with measured values to compute correlation.")
+    groups: List[GroupResult] = []
+    per_dim_acc: Dict[str, list] = {}   # dim -> list of (rho, weight)
+    for key, b in buckets.items():
+        gn = len(b["seqs"])
+        if gn < 3:
+            continue  # not enough comparable points to correlate
+        g_spear = _spearman(b["totals"], b["ys"])
+        g_pear = _pearson(b["totals"], b["ys"])
+        g_base = _baseline_spearman(b["seqs"], b["ys"])
+        groups.append(GroupResult(key=key, n=gn, spearman=g_spear,
+                                  pearson=g_pear, baseline_spearman=g_base))
+        for d in {dd for row in b["dims"] for dd in row}:
+            col = [row.get(d, float("nan")) for row in b["dims"]]
+            rho = float("nan") if any(math.isnan(v) for v in col) else _spearman(col, b["ys"])
+            per_dim_acc.setdefault(d, []).append((rho, gn))
 
-    per_dim = {}
-    all_dims = sorted({d for row in dim_rows for d in row})
-    for d in all_dims:
-        col = [row.get(d, float("nan")) for row in dim_rows]
-        if any(math.isnan(v) for v in col):
-            per_dim[d] = float("nan")
-        else:
-            per_dim[d] = _spearman(col, ys)
+    if not groups:
+        return EvalReport(
+            n=n_valid, n_skipped=skipped, spearman=float("nan"), pearson=float("nan"),
+            note="Need >= 3 valid records within a single comparable "
+                 "(target, assay, readout, unit) group to compute correlation.")
 
+    per_dim = {d: _weighted_mean(pairs) for d, pairs in per_dim_acc.items()}
     return EvalReport(
-        n=n,
+        n=n_valid,
         n_skipped=skipped,
-        spearman=_spearman(totals, ys),
-        pearson=_pearson(totals, ys),
+        spearman=_weighted_mean([(g.spearman, g.n) for g in groups]),
+        pearson=_weighted_mean([(g.pearson, g.n) for g in groups]),
         per_dimension_spearman=per_dim,
-        baseline_spearman=_baseline_spearman(seqs, ys),
+        baseline_spearman=_weighted_mean([(g.baseline_spearman, g.n) for g in groups]),
+        groups=sorted(groups, key=lambda g: -g.n),
     )
