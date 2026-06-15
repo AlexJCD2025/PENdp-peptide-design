@@ -92,7 +92,24 @@ def test_grouping_incomparable_assays():
     rep = evaluate_scoring(recs)
     check(len(rep.groups) == 2, f"two comparable groups detected (got {len(rep.groups)})")
     check(all(g.n == 4 for g in rep.groups), "each group has its 4 records")
-    check(rep.spearman > 0.8, f"within-group n-weighted ρ stays high (got {rep.spearman:.3f})")
+    check(rep.spearman > 0.8, f"pooled within-group ρ stays high (got {rep.spearman:.3f})")
+    check(not (rep.spearman_fisher_mean != rep.spearman_fisher_mean),
+          f"Fisher-z mean computed (got {rep.spearman_fisher_mean:.3f})")
+
+
+def test_batch_splits_groups():
+    print("\n📋 batch_id is part of the comparability key")
+    from pendp.scoring.engine import ScoringEngine
+    from pendp.eval import evaluate_scoring, WetlabRecord
+    engine = ScoringEngine()
+    seqs = ["CRGDKGPDC", "RWKFGGFK", "CNGRC", "CREKA", "KPSSPPEE", "YHWYGYTPQNVI"]
+    recs = []
+    for i, s in enumerate(seqs):
+        recs.append(WetlabRecord(s, value=engine.score_sequence(s)["total_score"],
+                                 direction="higher_better", assay="binding", unit="nM",
+                                 batch_id="B1" if i % 2 == 0 else "B2"))
+    rep = evaluate_scoring(recs)
+    check(len(rep.groups) == 2, f"same assay, two batches → two groups (got {len(rep.groups)})")
 
 
 def test_small_n_guard():
@@ -152,6 +169,7 @@ if __name__ == "__main__":
     test_direction_lower_better()
     test_per_dimension_and_baseline()
     test_grouping_incomparable_assays()
+    test_batch_splits_groups()
     test_small_n_guard()
     test_loader_roundtrip()
     test_empty_dataset()

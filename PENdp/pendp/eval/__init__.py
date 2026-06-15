@@ -156,15 +156,16 @@ def naive_features(seq: str) -> List[float]:
     return [float(n), float(net_charge), hydrophobic / n]
 
 
-def _baseline_spearman(sequences: List[str], y_eff: List[float]) -> float:
-    """Cross-validated Spearman of a linear fit on naive features.
+def _baseline_cv_predictions(sequences: List[str], y_eff: List[float]):
+    """Cross-validated predictions of a linear fit on naive features.
 
-    Cross-validated so it is comparable to (and a fair floor for) the
-    fit-free heuristic scorer. Falls back to in-sample on tiny N / CV errors.
+    Cross-validated so the baseline is a fair floor for the fit-free
+    heuristic scorer. Falls back to in-sample on tiny N / CV errors;
+    returns None if even that fails.
     """
     n = len(sequences)
     if n < 3:
-        return float("nan")
+        return None
     X = np.array([naive_features(s) for s in sequences], dtype=float)
     y = np.asarray(y_eff, dtype=float)
     try:
@@ -173,23 +174,72 @@ def _baseline_spearman(sequences: List[str], y_eff: List[float]) -> float:
         n_splits = min(5, n)
         if n_splits < 2:
             raise ValueError("too few samples for CV")
-        preds = cross_val_predict(
+        return cross_val_predict(
             LinearRegression(), X, y,
             cv=KFold(n_splits=n_splits, shuffle=True, random_state=0),
         )
-        return _spearman(preds, y)
     except Exception:
         try:
             from sklearn.linear_model import LinearRegression
-            model = LinearRegression().fit(X, y)
-            return _spearman(model.predict(X), y)
+            return LinearRegression().fit(X, y).predict(X)
         except Exception:
-            return float("nan")
+            return None
+
+
+# ── Within-group normalization + pooling (the defensible single metric) ──
+
+def _rank_percentile(a) -> np.ndarray:
+    """Within-group rank percentile in (0,1); removes scale and offset."""
+    a = np.asarray(a, dtype=float)
+    if len(a) == 0:
+        return a
+    return (_rankdata(a) - 0.5) / len(a)
+
+
+def _zscore(a) -> np.ndarray:
+    a = np.asarray(a, dtype=float)
+    s = a.std()
+    return (a - a.mean()) / s if s > 0 else np.zeros_like(a)
+
+
+def _pool_and_corr(per_group_xy, normalizer) -> float:
+    """Normalize x,y WITHIN each group, pool, then Pearson.
+
+    Because each group is normalized to a common (scale/offset-free) range
+    before pooling, cross-group differences in assay scale cannot distort the
+    result — this is the statistically valid way to get ONE number.
+    """
+    xs, ys = [], []
+    for x, y in per_group_xy:
+        x = np.asarray(x, dtype=float)
+        y = np.asarray(y, dtype=float)
+        if len(x) < 3 or np.std(x) == 0 or np.std(y) == 0:
+            continue  # group carries no correlation signal
+        xs.append(normalizer(x))
+        ys.append(normalizer(y))
+    if not xs:
+        return float("nan")
+    return _pearson(np.concatenate(xs), np.concatenate(ys))
+
+
+def _fisher_mean(pairs) -> float:
+    """Fisher z-transform mean of per-group correlations, weighted by (n-3)."""
+    zs, ws = [], []
+    for rho, n in pairs:
+        if math.isnan(rho) or n < 4:
+            continue
+        rho = max(min(rho, 0.999), -0.999)
+        zs.append(math.atanh(rho))
+        ws.append(n - 3)
+    if not zs or sum(ws) <= 0:
+        return float("nan")
+    zbar = sum(z * w for z, w in zip(zs, ws)) / sum(ws)
+    return math.tanh(zbar)
 
 
 @dataclass
 class GroupResult:
-    key: tuple                 # (target, assay, readout, unit)
+    key: tuple                 # (target, assay, readout, unit, batch_id)
     n: int
     spearman: float
     pearson: float
@@ -200,8 +250,9 @@ class GroupResult:
 class EvalReport:
     n: int                     # total valid records (across groups)
     n_skipped: int
-    spearman: float            # n-weighted mean of per-group Spearman
-    pearson: float             # n-weighted mean of per-group Pearson
+    spearman: float            # pooled within-group Spearman (the headline)
+    pearson: float             # pooled within-group Pearson
+    spearman_fisher_mean: float = float("nan")  # Fisher-z mean of per-group ρ
     per_dimension_spearman: Dict[str, float] = field(default_factory=dict)
     baseline_spearman: float = float("nan")
     groups: List[GroupResult] = field(default_factory=list)
@@ -218,14 +269,15 @@ class EvalReport:
             "PENdp Scoring Evaluation (ROADMAP Phase 0)",
             f"{'='*56}",
             f"  Records used: {self.n}   (skipped: {self.n_skipped})",
-            f"  Comparable groups (target/assay/readout/unit): {len(self.groups)}",
+            f"  Comparable groups (target/assay/readout/unit/batch): {len(self.groups)}",
         ]
         if self.note:
             lines.append(f"  ⚠️  {self.note}")
         if not math.isnan(self.spearman):
             lines.append(f"  {'─'*52}")
-            lines.append(f"  Within-group, n-weighted   Spearman ρ = {self.spearman:+.3f}")
-            lines.append(f"                              Pearson  r = {self.pearson:+.3f}")
+            lines.append(f"  Pooled within-group   Spearman ρ = {self.spearman:+.3f}  (headline)")
+            lines.append(f"                        Pearson  r = {self.pearson:+.3f}")
+            lines.append(f"  Fisher-z mean of per-group ρ     = {self.spearman_fisher_mean:+.3f}")
             lines.append(f"  Naive baseline (len/charge/hydro) ρ = {self.baseline_spearman:+.3f}")
             verdict = self.beats_baseline()
             if verdict is True:
@@ -234,13 +286,13 @@ class EvalReport:
                 lines.append("  ❌ Heuristic scorer does NOT beat the naive baseline.")
             if len(self.groups) > 1:
                 lines.append(f"  {'─'*52}")
-                lines.append("  Per-group ρ (pooling across these would be invalid):")
+                lines.append("  Per-group ρ (raw pooling across these would be invalid):")
                 for g in self.groups:
                     label = "/".join(x for x in g.key if x) or "(unlabeled)"
-                    lines.append(f"    {label:32s} n={g.n:<3d} ρ={g.spearman:+.3f}")
+                    lines.append(f"    {label:34s} n={g.n:<3d} ρ={g.spearman:+.3f}")
             if self.per_dimension_spearman:
                 lines.append(f"  {'─'*52}")
-                lines.append("  Per-dimension ρ vs outcome (within-group, n-weighted):")
+                lines.append("  Per-dimension ρ vs outcome (pooled within-group):")
                 for d, rho in sorted(self.per_dimension_spearman.items(),
                                      key=lambda kv: (math.isnan(kv[1]), -abs(kv[1]) if not math.isnan(kv[1]) else 0)):
                     flag = "" if math.isnan(rho) else ("  ⟵ strong" if abs(rho) >= 0.4 else ("  ·noise?" if abs(rho) < 0.1 else ""))
@@ -249,24 +301,16 @@ class EvalReport:
         return "\n".join(lines)
 
 
-def _weighted_mean(pairs) -> float:
-    """n-weighted mean over (value, weight), ignoring NaN values."""
-    num = den = 0.0
-    for v, w in pairs:
-        if not math.isnan(v):
-            num += v * w
-            den += w
-    return num / den if den > 0 else float("nan")
-
-
 def evaluate_scoring(records: List[WetlabRecord],
                      scorer: Optional[Callable[[str], Dict]] = None) -> EvalReport:
-    """Correlate a scorer against measured outcomes.
+    """Correlate a scorer against measured outcomes — comparably.
 
-    Correlations are computed WITHIN comparable groups — keyed by
-    (target, assay, readout, unit) — and aggregated as an n-weighted mean.
-    Pooling raw outcomes across different assays/units (e.g. nM affinity vs
-    %delivery) is statistically invalid, so it is never done.
+    Records are bucketed by comparable condition — (target, assay, readout,
+    unit, batch_id). Within each group, scores and outcomes are
+    rank-normalized (removing assay scale/offset), then pooled into ONE
+    Spearman (the headline). A Fisher-z mean of per-group ρ is reported as
+    an alternative aggregate, alongside the per-group breakdown. Raw outcomes
+    are never pooled across groups (nM affinity vs %delivery aren't comparable).
 
     Args:
         records: wet-lab records (with value + direction).
@@ -287,7 +331,7 @@ def evaluate_scoring(records: List[WetlabRecord],
             skipped += 1
             continue
         n_valid += 1
-        key = (r.target, r.assay, r.readout, r.unit)
+        key = (r.target, r.assay, r.readout, r.unit, r.batch_id)
         b = buckets.setdefault(key, {"seqs": [], "totals": [], "dims": [], "ys": []})
         b["seqs"].append(r.sequence)
         b["totals"].append(res["total_score"])
@@ -295,34 +339,43 @@ def evaluate_scoring(records: List[WetlabRecord],
         b["ys"].append(r.effective_outcome)
 
     groups: List[GroupResult] = []
-    per_dim_acc: Dict[str, list] = {}   # dim -> list of (rho, weight)
+    total_xy = []                          # [(scores, outcomes)] per group
+    baseline_xy = []                       # [(baseline_preds, outcomes)] per group
+    per_dim_xy: Dict[str, list] = {}       # dim -> [(dim_scores, outcomes)] per group
     for key, b in buckets.items():
         gn = len(b["seqs"])
         if gn < 3:
             continue  # not enough comparable points to correlate
-        g_spear = _spearman(b["totals"], b["ys"])
-        g_pear = _pearson(b["totals"], b["ys"])
-        g_base = _baseline_spearman(b["seqs"], b["ys"])
-        groups.append(GroupResult(key=key, n=gn, spearman=g_spear,
-                                  pearson=g_pear, baseline_spearman=g_base))
+        preds = _baseline_cv_predictions(b["seqs"], b["ys"])
+        g_base = _spearman(preds, b["ys"]) if preds is not None else float("nan")
+        groups.append(GroupResult(
+            key=key, n=gn,
+            spearman=_spearman(b["totals"], b["ys"]),
+            pearson=_pearson(b["totals"], b["ys"]),
+            baseline_spearman=g_base,
+        ))
+        total_xy.append((b["totals"], b["ys"]))
+        if preds is not None:
+            baseline_xy.append((preds, b["ys"]))
         for d in {dd for row in b["dims"] for dd in row}:
             col = [row.get(d, float("nan")) for row in b["dims"]]
-            rho = float("nan") if any(math.isnan(v) for v in col) else _spearman(col, b["ys"])
-            per_dim_acc.setdefault(d, []).append((rho, gn))
+            if not any(math.isnan(v) for v in col):
+                per_dim_xy.setdefault(d, []).append((col, b["ys"]))
 
     if not groups:
         return EvalReport(
             n=n_valid, n_skipped=skipped, spearman=float("nan"), pearson=float("nan"),
             note="Need >= 3 valid records within a single comparable "
-                 "(target, assay, readout, unit) group to compute correlation.")
+                 "(target, assay, readout, unit, batch) group to compute correlation.")
 
-    per_dim = {d: _weighted_mean(pairs) for d, pairs in per_dim_acc.items()}
+    per_dim = {d: _pool_and_corr(xy, _rank_percentile) for d, xy in per_dim_xy.items()}
     return EvalReport(
         n=n_valid,
         n_skipped=skipped,
-        spearman=_weighted_mean([(g.spearman, g.n) for g in groups]),
-        pearson=_weighted_mean([(g.pearson, g.n) for g in groups]),
+        spearman=_pool_and_corr(total_xy, _rank_percentile),
+        pearson=_pool_and_corr(total_xy, _zscore),
+        spearman_fisher_mean=_fisher_mean([(g.spearman, g.n) for g in groups]),
         per_dimension_spearman=per_dim,
-        baseline_spearman=_weighted_mean([(g.baseline_spearman, g.n) for g in groups]),
+        baseline_spearman=_pool_and_corr(baseline_xy, _rank_percentile),
         groups=sorted(groups, key=lambda g: -g.n),
     )
