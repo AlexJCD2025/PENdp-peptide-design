@@ -157,6 +157,11 @@ def main():
     # ── info ──
     sub.add_parser("info", help="Platform information")
 
+    # ── eval ── (ROADMAP Phase 0: validate scoring vs wet-lab readouts)
+    p_eval = sub.add_parser("eval", help="Evaluate scoring against wet-lab results")
+    p_eval.add_argument("--dataset", type=str, default=None,
+                        help="CSV of wet-lab results (default: pendp/data/wetlab_results.csv)")
+
     args = parser.parse_args()
 
     if args.command is None:
@@ -193,6 +198,8 @@ def main():
         cmd_search(args)
     elif args.command == "info":
         cmd_info()
+    elif args.command == "eval":
+        cmd_eval(args)
 
     elapsed = time.time() - start
     if elapsed > 1:
@@ -582,6 +589,20 @@ def cmd_target(args):
                   f"→ {t['top_ligand']}")
             for d in t['diseases']:
                 print(f"    关联疾病: {d}")
+def cmd_eval(args):
+    from pendp.eval import load_dataset, evaluate_scoring, DEFAULT_DATASET, SCHEMA_COLUMNS
+    path = args.dataset or DEFAULT_DATASET
+    records = load_dataset(path)
+    if not records:
+        print(f"ℹ️  No wet-lab results found in {path}.")
+        print(f"   Add rows under this header, then re-run `pendp eval`:")
+        print(f"   {','.join(SCHEMA_COLUMNS)}")
+        print(f"   (direction = higher_better | lower_better)")
+        return
+    report = evaluate_scoring(records)
+    print(report.summary())
+
+
 def cmd_info():
     from pendp.decision.framework import list_subsystems, pipeline_summary
     from pendp.wetlab.tracker import WetLabTracker

@@ -37,3 +37,4 @@ jobs:
           python tests/test_all.py
           python tests/test_d14_regression.py
           python tests/test_v44_fixes.py
+          python tests/test_eval.py
