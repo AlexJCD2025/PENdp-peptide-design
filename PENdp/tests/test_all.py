@@ -19,7 +19,7 @@ def test_scoring():
     # RP-832c
     result = quick_score("RWKFGGFK", verbose=False)
     print(f"  ✅ RP-832c score: {result['total_score']}/100")
-    assert 55 < result["total_score"] < 95, f"RP-832c off: {result['total_score']}"
+    assert 55 < result["total_score"] < 85, f"RP-832c off: {result['total_score']}"
 
     # Compare (iRGD should score higher than AAAA)
     engine = ScoringEngine()

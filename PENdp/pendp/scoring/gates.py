@@ -249,6 +249,14 @@ PENDP_GATES: List[GateDef] = [
         fail_message="偶联方向性差 — 可能降低LNP表面展示效率",
         cond_suggestion="在C端添加Cys用于maleimide定点偶联；减少内部Lys(≤1个)避免多点连接",
     ),
+    GateDef(
+        gate_id="G9", name="结构置信度参考", dimension="D14",
+        criticality=GateCriticality.NICE_TO_HAVE,
+        pass_threshold=5.0, fail_threshold=2.0,
+        description="Deep-learning / AlphaFold confidence proxy (foldability, length, cyclization)",
+        fail_message="结构置信度低 — 序列可能难以折叠/AF预测置信度差",
+        cond_suggestion="将长度控制在10-30aa利于折叠；引入N/C端Cys形成二硫约束；降低Gly比例(<30%)避免无序",
+    ),
 ]
 
 
