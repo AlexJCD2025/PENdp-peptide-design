@@ -30,7 +30,7 @@ class AF3Runner:
         from pendp.pipeline.integration import _score_d14
 
         d14_score = _score_d14(sequence)
-        plddt = round(5.0 + d14_score * 0.4, 1)
+        plddt = round(40.0 + d14_score * 5.0, 1)  # pLDDT on the standard 0-100 scale
         ptm = round(0.5 + d14_score * 0.04, 2)
 
         # Apply dynamic weight adjustment

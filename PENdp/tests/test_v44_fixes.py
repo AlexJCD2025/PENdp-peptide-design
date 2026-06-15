@@ -118,6 +118,31 @@ def test_ci_pass_denominator():
     check(f"/{ci} CI-PASS" in status, f"denominator is {ci} (CI gates), not total gates — got: {status}")
 
 
+def test_pipeline_proxy_review_fixes():
+    print("\n📋 Pipeline proxy review fixes (Codex PR#1)")
+    from pendp.pipeline.integration import _esmfold_predict, _md_simulation
+    from pendp.pipeline.af3_runner import AF3Runner
+    from pendp.pipeline.d14_integration import patch_engine_weights
+
+    # P2: pLDDT on standard 0-100 scale (high-confidence peptide >= 70)
+    fold = _esmfold_predict("CRGDKGPDC")
+    check(fold["plddt"] > 50.0, f"ESMFold proxy pLDDT on 0-100 scale (got {fold['plddt']})")
+    af = AF3Runner().predict_structure("CRGDKGPDC")
+    check(af["plddt"] > 50.0, f"AF3 proxy pLDDT on 0-100 scale (got {af['plddt']})")
+
+    # P1: MD filter can actually reject an unstable (poly-Gly) candidate
+    md_all = _md_simulation([{"sequence": "GGGGGGGGGGGG"}])
+    check(md_all[0]["md_stability"] < 4.0, f"poly-Gly MD stability < 4.0 (got {md_all[0]['md_stability']})")
+
+    # P2: deprecated shim rejects non-default borrow args instead of ignoring
+    raised = False
+    try:
+        patch_engine_weights(d14_borrow_from="D4", borrow_amount=0.10)
+    except ValueError:
+        raised = True
+    check(raised, "patch_engine_weights rejects non-default borrow args")
+
+
 if __name__ == "__main__":
     print("=" * 50)
     print("PENdp V4.4 fix regression tests")
@@ -131,6 +156,7 @@ if __name__ == "__main__":
     test_boundary_sequences()
     test_input_validation()
     test_ci_pass_denominator()
+    test_pipeline_proxy_review_fixes()
 
     print("\n" + "=" * 50)
     print(f"结果: {PASS}/{PASS + FAIL} 通过  ({FAIL} 失败)")

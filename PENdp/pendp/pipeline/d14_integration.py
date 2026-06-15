@@ -39,9 +39,19 @@ def patch_engine_weights(
         stacklevel=2,
     )
 
+    # This shim only reproduces the legacy default behavior. The custom
+    # borrowing arguments were never implemented; rather than silently
+    # ignoring them, reject non-default values and point to the replacement.
+    if d14_borrow_from != "D2" or borrow_amount != 0.025:
+        raise ValueError(
+            "patch_engine_weights() no longer supports custom "
+            "d14_borrow_from/borrow_amount. Use "
+            "integration.update_weights_with_d14() for dynamic reallocation."
+        )
+
     from pendp.pipeline.integration import update_weights_with_d14
 
-    # Forward to the dynamic version
+    # Forward to the dynamic version (neutral score == legacy static borrow)
     return update_weights_with_d14(
         base_weights=base_weights,
         d14_score=5.0,  # Neutral score = static borrowing behavior

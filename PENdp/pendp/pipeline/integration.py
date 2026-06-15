@@ -138,7 +138,7 @@ def _esmfold_predict(seq: str) -> Dict:
     d14_score = _score_d14(seq)
     return {
         "sequence": seq,
-        "plddt": round(5.0 + d14_score * 0.4, 1),  # Map 0-10 → 5-9
+        "plddt": round(40.0 + d14_score * 5.0, 1),  # Map 0-10 → 40-90 (pLDDT 0-100 scale)
         "d14_score": d14_score,
         "confidence": "high" if d14_score >= 6.0 else "medium" if d14_score >= 4.0 else "low",
     }
@@ -172,6 +172,8 @@ def _md_simulation(candidates: List[Dict]) -> List[Dict]:
         gly_ratio = seq_upper.count("G") / max(n, 1)
         if gly_ratio > 0.3:
             stability -= 1.0
+        if gly_ratio > 0.5:
+            stability -= 2.0  # poly-Gly is intrinsically unstructured
 
         # Hydrophobic core
         hydrophobic = sum(1 for aa in seq_upper if aa in "AVILMFWY")
@@ -182,6 +184,14 @@ def _md_simulation(candidates: List[Dict]) -> List[Dict]:
         # Very short sequences are stable
         if n <= 6:
             stability += 1.0
+
+        # Destabilizers (so the >= 4.0 gate can actually reject candidates):
+        # long unconstrained chains and proline-rich (PPII, no globular fold).
+        if n > 30 and not (seq_upper.startswith("C") and seq_upper.endswith("C")):
+            stability -= 1.5
+        pro_ratio = seq_upper.count("P") / max(n, 1)
+        if pro_ratio > 0.4:
+            stability -= 1.5
 
         c["md_stability"] = round(min(max(stability, 0), 10.0), 1)
         c["md_pass"] = c["md_stability"] >= 4.0
