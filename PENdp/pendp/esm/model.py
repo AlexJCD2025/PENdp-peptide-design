@@ -28,15 +28,14 @@ def _validate_sequence(seq: str) -> str:
     return seq
 
 
-def load_esm_model(model_size: str = "150M") -> Tuple[object, object, dict]:
+def load_esm_model(model_size: str = "150M") -> Tuple[object, object]:
     """Load ESM-2 model and tokenizer.
 
     Args:
         model_size: "8M", "35M", "150M", or "650M"
 
     Returns:
-        (model, tokenizer, info) — model is moved to best device, set to
-        eval mode. ``info`` is the ESM_MODELS config dict for this size.
+        (model, tokenizer) — model is moved to best device, set to eval mode.
     """
     from transformers import AutoTokenizer, AutoModel
     import torch
@@ -61,15 +60,17 @@ def load_esm_model(model_size: str = "150M") -> Tuple[object, object, dict]:
     model.eval()
     model.embedding_dim = info["dim"]
 
-    _MODEL_CACHE[model_size] = (model, tokenizer, info)
-    return model, tokenizer, info
+    _MODEL_CACHE[model_size] = (model, tokenizer)
+    return model, tokenizer
 
 
+@torch.no_grad()
 def get_embedding(model, tokenizer, sequence: str) -> np.ndarray:
     """Get mean-pooled ESM-2 embedding for a single peptide sequence."""
     return batch_get_embeddings(model, tokenizer, [sequence])[0]
 
 
+@torch.no_grad()
 def batch_get_embeddings(model, tokenizer, sequences: Iterable[str],
                          batch_size: int = 8) -> np.ndarray:
     """Get mean-pooled ESM-2 embeddings for multiple sequences.

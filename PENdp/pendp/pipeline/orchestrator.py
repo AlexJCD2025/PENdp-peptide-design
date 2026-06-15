@@ -1,11 +1,10 @@
-"""
-PENdp 五关融合漏斗 Pipeline Orchestrator
+"""PENdp 五关融合漏斗 Pipeline Orchestrator
 
     第一关: ML广筛 (ESM-2 + CPP + 评分) → 1000+ 候选
-    第二关: AF3/分子对接 (stub)         → Top 50-100
-    第三关: MD动力学验证 (stub)          → Top 20-30
-    第四关: QSAR/GNN精修 (stub)         → 5-10 最终候选
-    第五关: 湿实验闭环                    → 数据回流
+    第二关: 分子对接 (integration管线, skip_md) → Top 50-100
+    第三关: MD动力学验证 (integration管线, full) → Top 20-30
+    第四关: QSAR/GNN精修 (integration管线, D14权重) → 5-10 最终候选
+    第五关: 湿实验闭环 → 数据回流
 """
 import time
 from typing import List, Optional, Dict
@@ -57,7 +56,6 @@ class PipelineOrchestrator:
         self.esm_model = model
         self.esm_tokenizer = tokenizer
         self.scoring_engine.esm_model = model
-        self.scoring_engine.esm_tokenizer = tokenizer
         return config
 
     # ── Stage 0: Decision Framework ──
@@ -174,72 +172,103 @@ class PipelineOrchestrator:
             details=f"ESM-2评分 + CPP分类: {len(qualified)}/{n_in}合格"
         )
 
-    # ── Stage 2: Docking (stub) ──
+    # ── Stage 2: Docking (integration pipeline, skip MD) ──
 
     def stage2_docking(self, candidates: List[Dict],
                        verbose: bool = True) -> StageResult:
-        """Stage 2: Molecular docking filter (stub — returns top 50).
+        """Stage 2: Molecular docking via integration pipeline (skip MD).
 
-        In production: AlphaFold3 + HADDOCK/AutoDock.
+        Runs integration pipeline with skip_md=True for fast coarse screening.
+        Returns top candidates by re-scored total.
         """
         t0 = time.time()
         n_in = len(candidates)
-        n_out = min(50, n_in)
 
-        # Stub: just take top 50 by score
-        top = candidates[:n_out]
+        from pendp.pipeline.integration import run_full_pipeline
+
+        # Run integration pipeline, skip MD for speed
+        results = run_full_pipeline(candidates, skip_md=True, verbose=False)
+        n_out = min(50, len(results))
+
+        top = results[:n_out]
 
         elapsed = time.time() - t0
         if verbose:
-            print(f"\nStage 2: 分子对接 (stub) — {n_in}→{n_out}")
-            print(f"  ⏳ 需接入 AlphaFold3 + AutoDock")
+            print(f"\nStage 2: 分子对接 (integration) — {n_in}→{n_out}")
+            print(f"  管线: ESMFold + QSAR + D14 评分")
+            if top:
+                print(f"  Top: {top[0]['sequence']} ({top[0]['total_score']}/100)")
 
         return StageResult(
             stage=2, name="分子对接", n_input=n_in, n_output=n_out,
             elapsed_seconds=round(elapsed, 1), candidates=top,
-            details="[STUB] AF3/HADDOCK未接入，按评分取Top 50"
+            details=f"integration管线(skip_md): {n_out}/{n_in}通过"
         )
 
-    # ── Stage 3: MD (stub) ──
+    # ── Stage 3: MD Filter (integration pipeline, full) ──
 
     def stage3_md(self, candidates: List[Dict],
                   verbose: bool = True) -> StageResult:
-        """Stage 3: Molecular dynamics (stub — returns top 20)."""
+        """Stage 3: Molecular dynamics via integration pipeline (full).
+
+        Runs integration pipeline with MD enabled.
+        Returns candidates filtered by MD stability.
+        """
         t0 = time.time()
         n_in = len(candidates)
-        n_out = min(20, n_in)
-        top = candidates[:n_out]
+
+        from pendp.pipeline.integration import run_full_pipeline
+
+        # Run full integration pipeline with MD
+        results = run_full_pipeline(candidates, skip_md=False, verbose=False)
+        n_out = min(20, len(results))
+
+        top = results[:n_out]
 
         elapsed = time.time() - t0
         if verbose:
-            print(f"\nStage 3: MD动力学 (stub) — {n_in}→{n_out}")
-            print(f"  ⏳ 需配置 GROMACS/OpenMM")
+            print(f"\nStage 3: MD动力学 (integration) — {n_in}→{n_out}")
+            print(f"  管线: ESMFold + MD + QSAR + D14 评分")
+            if top:
+                print(f"  Top: {top[0]['sequence']} ({top[0]['total_score']}/100)")
 
         return StageResult(
             stage=3, name="MD验证", n_input=n_in, n_output=n_out,
             elapsed_seconds=round(elapsed, 1), candidates=top,
-            details="[STUB] GROMACS未配置，按评分取Top 20"
+            details=f"integration管线(full): {n_out}/{n_in}通过"
         )
 
-    # ── Stage 4: QSAR (stub) ──
+    # ── Stage 4: QSAR (integration pipeline, final ranking) ──
 
     def stage4_qsar(self, candidates: List[Dict],
                     verbose: bool = True) -> StageResult:
-        """Stage 4: QSAR/GNN refinement (stub — returns top 5-10)."""
+        """Stage 4: QSAR/GNN refinement via integration pipeline.
+
+        Uses integration pipeline's QSAR results for final ranking.
+        Returns top 5-10 candidates with D14-weighted scores.
+        """
         t0 = time.time()
         n_in = len(candidates)
-        n_out = min(10, max(5, n_in // 2))
-        top = candidates[:n_out]
+
+        from pendp.pipeline.integration import run_full_pipeline
+
+        # Run full integration pipeline (already has QSAR from stage 3)
+        results = run_full_pipeline(candidates, skip_md=False, verbose=False)
+        n_out = min(10, max(5, len(results) // 2))
+
+        top = results[:n_out]
 
         elapsed = time.time() - t0
         if verbose:
-            print(f"\nStage 4: QSAR精修 (stub) — {n_in}→{n_out}")
-            print(f"  ⏳ 需 RDKit + XGBoost/GNN")
+            print(f"\nStage 4: QSAR精修 (integration) — {n_in}→{n_out}")
+            print(f"  管线: ESMFold + QSAR + D14 评分重排")
+            if top:
+                print(f"  Top: {top[0]['sequence']} ({top[0]['total_score']}/100)")
 
         return StageResult(
             stage=4, name="QSAR精修", n_input=n_in, n_output=n_out,
             elapsed_seconds=round(elapsed, 1), candidates=top,
-            details="[STUB] RDKit/GNN未接入，按评分取Top 5-10"
+            details=f"integration管线 + D14权重: {n_out}/{n_in}最终候选"
         )
 
     # ── Stage 5: Wet Lab (stub) ──

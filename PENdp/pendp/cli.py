@@ -200,6 +200,7 @@ def main():
 
 def cmd_score(args):
     from pendp.scoring.engine import ScoringEngine
+    from pendp.esm.model import load_esm_model
 
     sequences = []
     if args.seq:
@@ -215,7 +216,6 @@ def cmd_score(args):
     engine = ScoringEngine()
 
     if args.esm:
-        from pendp.esm.model import load_esm_model
         print(f"Loading ESM-2 {args.esm}...")
         model, tokenizer, _ = load_esm_model(args.esm)
         engine.esm_model = model
@@ -237,11 +237,7 @@ def cmd_score(args):
             if not seq.strip():
                 print("❌ Empty sequence — skipping structure analysis")
                 continue
-            analyzer = StructureAnalyzer(
-                engine.esm_model if args.esm else None,
-                engine.esm_tokenizer if args.esm else None,
-            )
-            a = analyzer.analyze(seq)
+            a = StructureAnalyzer(engine.esm_model if args.esm else None).analyze(seq)
             if "error" in a:
                 print(f"❌ {seq}: {a['error']}")
                 continue
